@@ -26,11 +26,20 @@ function joinGame() {
     const chatMsgField = mustGetById('chat-msg');
     const leaveGameBtn = mustGetById('leave-game');
 
-    const appendChatMessage = (msg) => {
+    const appendChatMessage = (id, msg) => {
         const elt = document.createElement('div');
+        elt.id = "chat-msg-" + id;
         elt.className = "chat-msg";
         elt.appendChild(document.createTextNode(msg.toString()));
         chatMessages.appendChild(elt);
+    }
+
+    const updateView = (state) => {
+        for (let [id, msg] of state.chat) {
+            if (!document.getElementById("chat-msg-" + id)) {
+                appendChatMessage(id, msg);
+            }
+        }
     }
 
     const ws = new WebSocket("ws://localhost:3000/ws?token=" + encodeURIComponent(joinToken));
@@ -60,7 +69,8 @@ function joinGame() {
 
     ws.onmessage = (msg) => {
         console.debug("msg", msg);
-        appendChatMessage(msg.data.toString());
+        const state = JSON.parse(msg.data);
+        updateView(state);
     }
 
     ws.onclose = () => {
@@ -74,7 +84,7 @@ function joinGame() {
 
     ws.onerror = (err) => {
         console.error("err", err);
-        appendChatMessage("error");
+        appendChatMessage("err", "error");
     }
 }
 

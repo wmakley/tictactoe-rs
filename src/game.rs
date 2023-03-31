@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 
 #[derive(Debug)]
@@ -8,9 +8,9 @@ pub struct Game {
     pub state_changes: watch::Sender<State>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct State {
-    pub players: Vec<()>,
+    pub players: Vec<String>,
     pub board: Vec<char>,
     pub chat: Vec<(usize, String)>,
 }

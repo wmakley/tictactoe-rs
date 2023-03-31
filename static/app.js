@@ -1,3 +1,6 @@
+import * as m from "mithril";
+
+
 function mustGetById(id) {
     const elt = document.getElementById(id);
     if (!elt) {

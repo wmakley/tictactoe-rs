@@ -1,6 +1,7 @@
 mod db;
 mod game;
 mod site;
+mod socket;
 
 use crate::game::Game;
 use axum::{
@@ -15,7 +16,7 @@ use axum::{
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
 use rand::{distributions::Alphanumeric, Rng};
-use redis::aio::ConnectionManager;
+// use redis::aio::ConnectionManager;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -23,18 +24,18 @@ use tokio::sync::watch;
 
 #[derive(Debug)]
 struct AppState {
-    pub redis_conn_mgr: ConnectionManager,
+    // pub redis_conn_mgr: ConnectionManager,
     pub games: Arc<Mutex<HashMap<String, Arc<Mutex<Game>>>>>,
 }
 
 #[tokio::main]
 async fn main() {
-    let redis_address = std::env::var("REDIS_ADDRESS").unwrap();
-    let client = redis::Client::open(redis_address).unwrap();
-    let redis_conn_mgr = client.get_tokio_connection_manager().await.unwrap();
+    // let redis_address = std::env::var("REDIS_ADDRESS").unwrap();
+    // let client = redis::Client::open(redis_address).unwrap();
+    // let redis_conn_mgr = client.get_tokio_connection_manager().await.unwrap();
 
     let shared_state = Arc::new(AppState {
-        redis_conn_mgr: redis_conn_mgr,
+        // redis_conn_mgr: redis_conn_mgr,
         games: Arc::new(Mutex::new(HashMap::new())),
         // sockets: Vec::new(),
     });
@@ -99,6 +100,8 @@ async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state:
             socket.send(Message::Text(id)).await.unwrap();
         }
     };
+
+    println!("Socket: App State: {:?}", state);
 
     let (mut send_to_web, mut recv_from_web) = socket.split();
 

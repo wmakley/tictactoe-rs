@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 
-#[derive(Clone)]
+#[derive(Debug)]
 struct AppState {
     pub redis_conn_mgr: ConnectionManager,
     pub games: Arc<Mutex<HashMap<String, Arc<Mutex<Game>>>>>,
@@ -70,7 +70,7 @@ async fn open_conn(
     ws.on_upgrade(|socket| handle_socket(socket, join_token, state))
 }
 
-async fn handle_socket(socket: WebSocket, join_token: Option<String>, state: Arc<AppState>) {
+async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state: Arc<AppState>) {
     // let redis = state.redis_conn_mgr.clone();
     println!(
         "New WebSocket connection with join token: '{:?}'",
@@ -94,7 +94,9 @@ async fn handle_socket(socket: WebSocket, join_token: Option<String>, state: Arc
             let (tx, rx) = watch::channel(game::State::new());
             receive_from_game = rx;
             game = Arc::new(Mutex::new(Game::new(id.clone(), tx)));
-            state.games.lock().unwrap().insert(id, game.clone());
+            state.games.lock().unwrap().insert(id.clone(), game.clone());
+            // send join token to game
+            socket.send(Message::Text(id)).await.unwrap();
         }
     };
 

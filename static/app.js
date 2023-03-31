@@ -34,6 +34,11 @@ function joinGame() {
         chatMessages.appendChild(elt);
     }
 
+    const updateJoinToken = (joinToken) => {
+        joinTokenField.value = joinToken;
+        joinTokenField.readonly = true;
+    }
+
     const updateView = (state) => {
         for (let [id, msg] of state.chat) {
             if (!document.getElementById("chat-msg-" + id)) {
@@ -63,21 +68,28 @@ function joinGame() {
         connected = true;
         showTimedAlert("Successfully joined game!");
         chatMsgField.value = "";
-        joinGameForm.classList.add("hidden");
+        // joinGameForm.classList.add("hidden");
         gameArea.classList.remove("hidden");
     };
 
     ws.onmessage = (msg) => {
         console.debug("msg", msg);
-        const state = JSON.parse(msg.data);
-        updateView(state);
+        if (msg.data[0] === '{') {
+            const state = JSON.parse(msg.data);
+            updateView(state);
+        } else {
+            // assume join token
+            const joinToken = msg.data;
+            updateJoinToken(joinToken);
+        }
     }
 
     ws.onclose = () => {
         connected = false;
         console.debug("disconnected");
         joinTokenField.value = "";
-        joinGameForm.classList.remove("hidden");
+        joinTokenField.readonly = false;
+        // joinGameForm.classList.remove("hidden");
         gameArea.classList.add("hidden");
         showTimedAlert("Disconnected from game.");
     }

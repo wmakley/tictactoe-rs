@@ -67,7 +67,7 @@ impl Game {
         Ok(player)
     }
 
-    pub fn handle_msg(&mut self, msg: &FromBrowser) -> Result<(), String> {
+    pub fn handle_msg(&mut self, msg: FromBrowser) -> Result<(), String> {
         println!("Game: Handle Msg: {:?}", msg);
         match msg {
             FromBrowser::ChatMsg(msg_text) => {
@@ -77,11 +77,11 @@ impl Game {
                 Ok(())
             }
             FromBrowser::Move { pos, player } => {
-                if self.state.board[*pos] != ' ' {
+                if self.state.board[pos] != ' ' {
                     return Err("Invalid move".to_string());
                 }
 
-                self.state.board[*pos] = self.state.players[*player].team;
+                self.state.board[pos] = self.state.players[player].team;
                 self.state_changes.send(self.state.clone()).unwrap();
                 Ok(())
             }

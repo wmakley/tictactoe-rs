@@ -1,7 +1,6 @@
 mod db;
 mod game;
 mod site;
-mod socket;
 
 use crate::game::Game;
 use axum::{
@@ -19,13 +18,23 @@ use rand::{distributions::Alphanumeric, Rng};
 // use redis::aio::ConnectionManager;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::sync::{Arc, Mutex};
-use tokio::sync::watch;
 
 #[derive(Debug)]
 struct AppState {
     // pub redis_conn_mgr: ConnectionManager,
     pub games: Arc<Mutex<HashMap<String, Arc<Mutex<Game>>>>>,
+}
+
+impl Display for AppState {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "AppState(GameCount: {})",
+            self.games.lock().unwrap().len()
+        )
+    }
 }
 
 #[tokio::main]
@@ -78,30 +87,43 @@ async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state:
         join_token
     );
 
-    let game: Arc<Mutex<Game>>;
-    let mut receive_from_game: watch::Receiver<game::State>;
-
-    match join_token {
-        Some(token) => {
-            // find the game and connect to it
+    let game: Arc<Mutex<Game>> = join_token
+        .clone()
+        .and_then(|token| {
+            // if we have a token, try to get the game matching the token
             let games = state.games.lock().unwrap();
-            game = games.get(&token).unwrap().clone();
-            let game = game.lock().unwrap();
-            receive_from_game = game.state_changes.subscribe();
-        }
-        None => {
-            // create a new game
-            let id = random_token();
-            let (tx, rx) = watch::channel(game::State::new());
-            receive_from_game = rx;
-            game = Arc::new(Mutex::new(Game::new(id.clone(), tx)));
-            state.games.lock().unwrap().insert(id.clone(), game.clone());
-            // send join token to game
-            socket.send(Message::Text(id)).await.unwrap();
-        }
+            games.get(&token).map(|g| g.clone())
+        })
+        .unwrap_or_else(|| {
+            // if after that we still don't have a game, create a new one
+
+            // generate id
+            let id: String = join_token.unwrap_or_else(|| random_token());
+
+            let (game, _) = Game::new(id.clone());
+
+            let game = Arc::new(Mutex::new(game));
+
+            state.games.lock().unwrap().insert(id, game.clone());
+            game
+        });
+
+    // now that we got a game, extract some data from it and send state to client
+    let (id, state, mut receive_from_game) = {
+        let game = game.lock().unwrap();
+        (
+            game.id.clone(),
+            game.state.clone(),
+            game.state_changes.subscribe(),
+        )
     };
 
-    println!("Socket: App State: {:?}", state);
+    let json = serde_json::to_string(&game::ToBrowser::JoinedGame {
+        token: id,
+        state: state,
+    })
+    .unwrap();
+    socket.send(Message::Text(json)).await.unwrap();
 
     let (mut send_to_web, mut recv_from_web) = socket.split();
 
@@ -109,17 +131,20 @@ async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state:
         tokio::select! {
             _ = receive_from_game.changed() => {
                 let new_state = receive_from_game.borrow().clone();
-                println!("Socket: Received game state change: {:?}", new_state);
-                let json = serde_json::to_string(&new_state).unwrap();
+                println!("Socket: Sending game state change: {:?}", new_state);
+
+                let json = serde_json::to_string(&game::ToBrowser::GameState(new_state)).unwrap();
                 send_to_web.send(Message::Text(json)).await.unwrap();
             }
             msg = recv_from_web.next() => {
                 match msg {
-                    Some(msg) => {
-                        println!("Socket: Received message: {:?}", msg);
-                        match msg {
-                            Ok(Message::Text(msg)) => {
-                                game.lock().unwrap().handle_msg(game::StateChange::ChatMsg(msg)).unwrap();
+                    Some(raw_msg) => {
+                        println!("Socket: Received message: {:?}", raw_msg);
+                        match raw_msg {
+                            Ok(Message::Text(json)) => {
+                                let parsed: game::FromBrowser = serde_json::from_str(&json).unwrap();
+                                println!("Socket: Parsed message: {:?}", parsed);
+                                game.lock().unwrap().handle_msg(&parsed).unwrap();
                             }
 
                             Ok(Message::Close(_)) => {

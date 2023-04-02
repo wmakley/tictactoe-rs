@@ -26,22 +26,25 @@ impl State {
 }
 
 impl Game {
-    pub fn new(id: String, state_changes: watch::Sender<State>) -> Game {
+    pub fn new(id: String) -> (Game, watch::Receiver<State>) {
+        let state = State::new();
+        let (tx, rx) = watch::channel(state.clone());
+
         let game = Game {
             id: id,
-            state: State::new(),
-            state_changes: state_changes,
+            state: state,
+            state_changes: tx,
         };
 
-        return game;
+        return (game, rx);
     }
 
-    pub fn handle_msg(&mut self, msg: StateChange) -> Result<(), String> {
+    pub fn handle_msg(&mut self, msg: &FromBrowser) -> Result<(), String> {
         println!("Game: Handle Msg: {:?}", msg);
         match msg {
-            StateChange::ChatMsg(chat) => {
+            FromBrowser::ChatMsg(msg_text) => {
                 let id = self.state.chat.len();
-                self.state.chat.push((id, chat.clone()));
+                self.state.chat.push((id, msg_text.clone()));
                 self.state_changes.send(self.state.clone()).unwrap();
                 Ok(())
             }
@@ -49,7 +52,13 @@ impl Game {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum StateChange {
+#[derive(Debug, Clone, Deserialize)]
+pub enum FromBrowser {
     ChatMsg(String),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ToBrowser {
+    JoinedGame { token: String, state: State },
+    GameState(State),
 }

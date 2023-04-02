@@ -1,6 +1,3 @@
-import * as m from "mithril";
-
-
 function mustGetById(id) {
     const elt = document.getElementById(id);
     if (!elt) {
@@ -59,7 +56,7 @@ function joinGame() {
             return;
         }
         const msg = chatMsgField.value;
-        ws.send(msg);
+        ws.send(JSON.stringify({"ChatMsg": msg}));
         chatMsgField.value = "";
     });
 
@@ -75,17 +72,26 @@ function joinGame() {
         gameArea.classList.remove("hidden");
     };
 
-    ws.onmessage = (msg) => {
-        console.debug("msg", msg);
-        if (msg.data[0] === '{') {
-            const state = JSON.parse(msg.data);
+    ws.onmessage = (rawMsg) => {
+        console.debug("msg", rawMsg);
+        const json = JSON.parse(rawMsg.data);
+        console.debug("json", json);
+        const type = Object.keys(json)[0].toString();
+        const data = json[type];
+        console.debug("type", type, "data", data);
+
+        if ( type === "JoinedGame" )  {
+            const {token, state} = data;
+            updateJoinToken(token);
             updateView(state);
-        } else {
-            // assume join token
-            const joinToken = msg.data;
-            updateJoinToken(joinToken);
         }
-    }
+        else if ( type === "GameState" ) {
+            updateView(data);
+        }
+        else {
+            console.error("Unknown message type", type);
+        }
+    };
 
     ws.onclose = () => {
         connected = false;
@@ -94,8 +100,9 @@ function joinGame() {
         joinTokenField.readonly = false;
         // joinGameForm.classList.remove("hidden");
         gameArea.classList.add("hidden");
+        chatMessages.innerHTML = "";
         showTimedAlert("Disconnected from game.");
-    }
+    };
 
     ws.onerror = (err) => {
         console.error("err", err);

@@ -150,8 +150,6 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
     .unwrap();
     socket.send(Message::Text(json)).await.unwrap();
 
-    // let (mut send_to_web, mut recv_from_web) = socket.split();
-
     loop {
         tokio::select! {
             _ = receive_from_game.changed() => {

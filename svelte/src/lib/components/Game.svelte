@@ -73,6 +73,7 @@
 
         ws.onclose = () => {
             inGame = false;
+            joinToken = "";
             console.log("disconnected");
         };
 
@@ -89,7 +90,16 @@
     }
 
     let chatMessage = "";
+    let isChatMessageValid = false;
+    $: {
+        isChatMessageValid =
+            (chatMessage || "").replace(/^\s+|\s+$/gm, "").length > 0;
+    }
+
     function sendChatMessage() {
+        if (!isChatMessageValid) {
+            return;
+        }
         if (!ws) {
             return;
         }
@@ -178,7 +188,11 @@
                             />
                         </div>
                         <div class="column">
-                            <input type="submit" value="Send" />
+                            <input
+                                type="submit"
+                                value="Send"
+                                disabled={!inGame || !isChatMessageValid}
+                            />
                             <button type="button" on:click={leaveGame}>
                                 Leave Game
                             </button>

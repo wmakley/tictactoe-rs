@@ -16,8 +16,8 @@
 
     interface ChatMessage {
         id: number;
-        player_id: number;
-        msg: string;
+        player: number;
+        text: string;
     }
 
     let joinToken = "";
@@ -93,7 +93,7 @@
         if (!ws) {
             return;
         }
-        ws.send(JSON.stringify({ ChatMsg: chatMessage }));
+        ws.send(JSON.stringify({ ChatMsg: { text: chatMessage } }));
         chatMessage = "";
     }
 </script>
@@ -157,12 +157,12 @@
             <div id="chat">
                 <h2>Chat</h2>
                 <div class="chat-messages">
-                    {#each gameState.chat as { id, player_id, msg }}
+                    {#each gameState.chat as { id, player, text }}
                         <div class="chat-message" id={`chat-message-${id}`}>
                             <span class="chat-message-player">
-                                {gameState.players[player_id].name}:
+                                {gameState.players[player].name}:
                             </span>
-                            <span class="chat-message-text">{msg}</span>
+                            <span class="chat-message-text">{text}</span>
                         </div>
                     {/each}
                 </div>

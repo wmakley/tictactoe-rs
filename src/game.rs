@@ -12,7 +12,7 @@ pub struct Game {
 pub struct State {
     pub players: Vec<Player>,
     pub board: Vec<char>,
-    pub chat: Vec<(usize, String)>,
+    pub chat: Vec<ChatMessage>,
 }
 
 impl State {
@@ -30,6 +30,13 @@ pub struct Player {
     pub id: usize,
     pub team: char,
     pub name: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ChatMessage {
+    pub id: usize,
+    pub player: usize,
+    pub text: String,
 }
 
 impl Game {
@@ -67,16 +74,20 @@ impl Game {
         Ok(player)
     }
 
-    pub fn handle_msg(&mut self, msg: FromBrowser) -> Result<(), String> {
+    pub fn handle_msg(&mut self, player: usize, msg: FromBrowser) -> Result<(), String> {
         println!("Game: Handle Msg: {:?}", msg);
         match msg {
-            FromBrowser::ChatMsg(msg_text) => {
+            FromBrowser::ChatMsg { text } => {
                 let id = self.state.chat.len();
-                self.state.chat.push((id, msg_text.clone()));
+                self.state.chat.push(ChatMessage {
+                    id: id,
+                    player: player,
+                    text: text,
+                });
                 self.state_changes.send(self.state.clone()).unwrap();
                 Ok(())
             }
-            FromBrowser::Move { pos, player } => {
+            FromBrowser::Move { pos } => {
                 if self.state.board[pos] != ' ' {
                     return Err("Invalid move".to_string());
                 }
@@ -91,8 +102,8 @@ impl Game {
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum FromBrowser {
-    ChatMsg(String),
-    Move { pos: usize, player: usize },
+    ChatMsg { text: String },
+    Move { pos: usize },
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -169,7 +169,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                             Ok(Message::Text(json)) => {
                                 let parsed: game::FromBrowser = serde_json::from_str(&json).unwrap();
                                 println!("Socket: Parsed message: {:?}", parsed);
-                                game.lock().unwrap().handle_msg(parsed).unwrap();
+                                game.lock().unwrap().handle_msg(player.id, parsed).unwrap();
                             }
 
                             Ok(Message::Close(_)) => {

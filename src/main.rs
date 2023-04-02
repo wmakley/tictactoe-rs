@@ -13,7 +13,6 @@ use axum::{
     routing::get,
     Router,
 };
-use futures_util::{sink::SinkExt, stream::StreamExt};
 use rand::{distributions::Alphanumeric, Rng};
 // use redis::aio::ConnectionManager;
 use serde::Deserialize;
@@ -65,6 +64,25 @@ async fn main() {
 struct NewGameParams {
     #[serde(default)]
     pub token: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+impl NewGameParams {
+    pub fn normalized(&self) -> NewGameParams {
+        NewGameParams {
+            token: self
+                .token
+                .clone()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
+            name: self
+                .name
+                .clone()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty()),
+        }
+    }
 }
 
 async fn open_conn(
@@ -72,22 +90,16 @@ async fn open_conn(
     State(state): State<Arc<AppState>>,
     ws: WebSocketUpgrade,
 ) -> Response {
-    let join_token = params
-        .token
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty());
-
-    ws.on_upgrade(|socket| handle_socket(socket, join_token, state))
+    let params = params.normalized();
+    ws.on_upgrade(|socket| handle_socket(socket, params, state))
 }
 
-async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state: Arc<AppState>) {
+async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<AppState>) {
     // let redis = state.redis_conn_mgr.clone();
-    println!(
-        "New WebSocket connection with join token: '{:?}'",
-        join_token
-    );
+    println!("New WebSocket connection with params: '{:?}'", params);
 
-    let game: Arc<Mutex<Game>> = join_token
+    let game: Arc<Mutex<Game>> = params
+        .token
         .clone()
         .and_then(|token| {
             // if we have a token, try to get the game matching the token
@@ -97,8 +109,7 @@ async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state:
         .unwrap_or_else(|| {
             // if after that we still don't have a game, create a new one
 
-            // generate id
-            let id: String = join_token.unwrap_or_else(|| random_token());
+            let id: String = params.token.unwrap_or_else(|| random_token());
 
             let (game, _) = Game::new(id.clone());
 
@@ -109,10 +120,23 @@ async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state:
         });
 
     // now that we got a game, extract some data from it and send state to client
-    let (id, state, mut receive_from_game) = {
-        let game = game.lock().unwrap();
+    let (id, player, state, mut receive_from_game) = {
+        let mut game = game.lock().unwrap();
+
+        let player: game::Player;
+        match game.add_player(params.name.unwrap_or_else(|| "Unnamed Player".to_string())) {
+            Ok(_player) => {
+                player = _player;
+            }
+            Err(e) => {
+                println!("Socket: TODO: Error adding player: {:?}", e);
+                return;
+            }
+        }
+
         (
             game.id.clone(),
+            player,
             game.state.clone(),
             game.state_changes.subscribe(),
         )
@@ -120,12 +144,13 @@ async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state:
 
     let json = serde_json::to_string(&game::ToBrowser::JoinedGame {
         token: id,
+        team: player.team,
         state: state,
     })
     .unwrap();
     socket.send(Message::Text(json)).await.unwrap();
 
-    let (mut send_to_web, mut recv_from_web) = socket.split();
+    // let (mut send_to_web, mut recv_from_web) = socket.split();
 
     loop {
         tokio::select! {
@@ -134,9 +159,9 @@ async fn handle_socket(mut socket: WebSocket, join_token: Option<String>, state:
                 println!("Socket: Sending game state change: {:?}", new_state);
 
                 let json = serde_json::to_string(&game::ToBrowser::GameState(new_state)).unwrap();
-                send_to_web.send(Message::Text(json)).await.unwrap();
+                socket.send(Message::Text(json)).await.unwrap();
             }
-            msg = recv_from_web.next() => {
+            msg = socket.recv() => {
                 match msg {
                     Some(raw_msg) => {
                         println!("Socket: Received message: {:?}", raw_msg);

@@ -716,7 +716,6 @@ name = "tictactoe-ws"
 version = "0.1.0"
 dependencies = [
  "axum",
- "futures-util",
  "rand",
  "redis",
  "serde",

@@ -7,7 +7,6 @@ version = "0.1.0"
 
 [dependencies]
 axum = {version = "0.6.12", features = ["ws"]}
-futures-util = "0.3.28"
 rand = "0.8.5"
 redis = {version = "0.22.3", features = ["tokio-comp", "connection-manager"]}
 serde = {version = "1.0.158", features = ["derive"]}

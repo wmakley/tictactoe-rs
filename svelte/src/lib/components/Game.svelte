@@ -41,6 +41,9 @@
         board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
         chat: [],
     };
+    function getPlayer(gameState: GameState, team: Team) {
+        return gameState.players.find((p) => p.team === team);
+    }
 
     let ws: WebSocket | null = null;
 

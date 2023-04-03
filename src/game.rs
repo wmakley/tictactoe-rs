@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 
@@ -33,6 +35,12 @@ impl State {
 pub struct Player {
     pub team: char,
     pub name: String,
+}
+
+impl Display for Player {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ({})", self.name, self.team)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -137,6 +145,13 @@ impl Game {
 
         self.state.board[space] = player;
         self.state.turn = if self.state.turn == 'X' { 'O' } else { 'X' };
+
+        self.add_chat_message(
+            ChatMessageSource::Player(player),
+            format!("Played {} at ({}, {}).", player, space % 3 + 1, space / 3 + 1),
+        )
+        .unwrap();
+
         match self.check_for_win() {
             Some(winner) => {
                 self.state.winner = Some(winner);

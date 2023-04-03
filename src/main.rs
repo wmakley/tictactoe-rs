@@ -179,18 +179,29 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                             Ok(Message::Text(json)) => {
                                 let parsed: game::FromBrowser = serde_json::from_str(&json).unwrap();
                                 println!("Socket: Parsed message: {:?}", parsed);
-                                let mut game = game.lock().unwrap();
-                                match game.handle_msg(player.team, parsed) {
-                                    Ok(changed) => {
-                                        if changed {
-                                            game.broadcast_state();
+
+                                let server_err = {
+                                    let mut game = game.lock().unwrap();
+                                    let result = game.handle_msg(player.team, parsed);
+                                    match result {
+                                        Ok(changed) => {
+                                            if changed {
+                                                game.broadcast_state();
+                                            }
+                                            None
+                                        }
+
+                                        Err(e) => {
+                                            Some(e)
                                         }
                                     }
-                                    Err(e) => {
-                                        println!("TODO: Socket: Error handling message: {:?}", e);
-                                        // let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
-                                        // socket.send(Message::Text(json)).await.unwrap();
-                                    }
+                                    // lock game
+                                };
+
+                                if let Some(e) = server_err {
+                                    println!("Socket: Error handling message: {:?}", e);
+                                    let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
+                                    socket.send(Message::Text(json)).await.unwrap();
                                 }
                             }
 

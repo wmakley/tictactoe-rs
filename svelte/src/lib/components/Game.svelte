@@ -74,7 +74,7 @@
             console.debug("json", json);
             const type = Object.keys(json)[0].toString();
             const data = json[type];
-            console.debug("type", type, "data", data);
+            // console.debug("type", type, "data", data);
 
             if (type === "JoinedGame") {
                 const { token, team, state } = data;
@@ -85,6 +85,9 @@
             } else if (type === "GameState") {
                 gameState = data as GameState;
                 enoughPlayers = gameState.players.length === 2;
+            } else if (type === "Error") {
+                console.error("Error from server", data);
+                window.alert(data);
             } else {
                 console.error("Unknown message type", type);
             }
@@ -130,10 +133,10 @@
         if (!ws) {
             return;
         }
-        if (!enoughPlayers) {
-            console.warn("not enough players to play");
-            return;
-        }
+        // if (!enoughPlayers) {
+        //     console.warn("not enough players to play");
+        //     return;
+        // }
         ws.send(JSON.stringify({ Move: { space } }));
     }
 </script>
@@ -187,6 +190,9 @@
                     <button
                         type="button"
                         class="square"
+                        disabled={!enoughPlayers ||
+                            gameState.turn !== myTeam ||
+                            square !== " "}
                         on:click={() => sendMove(i)}
                     >
                         {square}
@@ -233,9 +239,6 @@
                                 value="Send"
                                 disabled={!inGame || !isChatMessageValid}
                             />
-                            <button type="button" on:click={leaveGame}>
-                                Leave Game
-                            </button>
                         </div>
                     </div>
                 </form>

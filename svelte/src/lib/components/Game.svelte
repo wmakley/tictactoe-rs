@@ -23,9 +23,7 @@
 
     type ChatMessageSource = PlayerSource | "System";
     interface PlayerSource {
-        Player: {
-            team: Team;
-        };
+        Player: Team;
     }
 
     let joinToken = "";
@@ -216,9 +214,7 @@
                                 </span>
                             {:else}
                                 <span class="chat-message-player">
-                                    {gameState.players.filter(
-                                        (p) => p.team === myTeam
-                                    )[0].name} ({myTeam}):
+                                    {getPlayer(gameState, source.Player)?.name} ({source.Player}):
                                 </span>
                             {/if}
                             <span class="chat-message-text">{text}</span>

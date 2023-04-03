@@ -146,6 +146,7 @@
     <form id="join-game-form" on:submit|preventDefault={joinGame}>
         <div class="row">
             <div class="column">
+                <label for="player-name">Player Name</label>
                 <input
                     type="text"
                     id="player-name"
@@ -156,6 +157,11 @@
                 />
             </div>
             <div class="column">
+                <label for="join-token"
+                    >{inGame
+                        ? "Code For Others to Join You"
+                        : "Game Token"}</label
+                >
                 <input
                     type="text"
                     id="join-token"
@@ -167,13 +173,21 @@
             </div>
             {#if inGame}
                 <div class="column">
-                    <button type="button" on:click={leaveGame}>
+                    <button
+                        type="button"
+                        on:click={leaveGame}
+                        class="horizontal-submit"
+                    >
                         Leave Game
                     </button>
                 </div>
             {:else}
                 <div class="column">
-                    <input type="submit" value="Join Game" />
+                    <input
+                        type="submit"
+                        value="Join Game"
+                        class="horizontal-submit"
+                    />
                 </div>
             {/if}
         </div>
@@ -185,12 +199,9 @@
         <div class="column">
             <div class="game-board">
                 {#each gameState.board as square, i}
-                    {#if i % 3 === 0}
-                        <div class="clear" />
-                    {/if}
                     <button
                         type="button"
-                        class="square"
+                        class="game-square {square}"
                         disabled={!enoughPlayers ||
                             gameState.turn !== myTeam ||
                             square !== " "}

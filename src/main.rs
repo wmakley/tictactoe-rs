@@ -110,6 +110,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
             // if after that we still don't have a game, create a new one
 
             let id: String = params.token.unwrap_or_else(|| random_token());
+            // TODO: when generating random token, check for collisions
 
             let (game, _) = Game::new(id.clone());
 
@@ -121,7 +122,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
 
     // now that we got a game, add the connected user as a player,
     // extract some data from it and send state to client
-    let (id, player, state, mut receive_from_game) = {
+    let (id, player, game_state, mut receive_from_game) = {
         let mut game = game.lock().unwrap();
 
         let player: game::Player;
@@ -147,7 +148,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
     let json = serde_json::to_string(&game::ToBrowser::JoinedGame {
         token: id,
         team: player.team,
-        state: state,
+        state: game_state,
     })
     .unwrap();
     socket.send(Message::Text(json)).await.unwrap();
@@ -159,6 +160,10 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
         );
         let mut game = game.lock().unwrap();
         game.remove_player(player.team);
+        if game.state.players.is_empty() {
+            println!("Socket: Game is empty, removing globally");
+            state.games.lock().unwrap().remove(&game.id);
+        }
         game.broadcast_state();
     };
 

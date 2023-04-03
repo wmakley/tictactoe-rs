@@ -1,14 +1,15 @@
 <script lang="ts">
     interface GameState {
+        turn: Team;
+        winner: Team | null;
         players: Player[];
         board: Square[];
         chat: ChatMessage[];
     }
 
     interface Player {
-        id: number;
-        name: string;
         team: Team;
+        name: string;
     }
 
     type Team = "X" | "O";
@@ -16,15 +17,26 @@
 
     interface ChatMessage {
         id: number;
-        player: number;
+        source: ChatMessageSource | "System";
         text: string;
+    }
+
+    type ChatMessageSource = PlayerSource | "System";
+    interface PlayerSource {
+        Player: {
+            team: Team;
+        };
     }
 
     let joinToken = "";
     let playerName = "";
     let inGame = false;
+    let enoughPlayers = false;
+    let myTeam: Team = "X";
 
     let gameState: GameState = {
+        turn: "X",
+        winner: null,
         players: [],
         board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
         chat: [],
@@ -33,6 +45,10 @@
     let ws: WebSocket | null = null;
 
     function joinGame() {
+        if (inGame) {
+            return;
+        }
+
         console.log(
             "Joining game with player name:",
             playerName,
@@ -53,7 +69,7 @@
         };
 
         ws.onmessage = (rawMsg) => {
-            console.debug("msg", rawMsg);
+            console.debug("Got Msg From Server:", rawMsg);
             const json = JSON.parse(rawMsg.data);
             console.debug("json", json);
             const type = Object.keys(json)[0].toString();
@@ -61,11 +77,14 @@
             console.debug("type", type, "data", data);
 
             if (type === "JoinedGame") {
-                const { token, state } = data;
-                joinToken = token;
-                gameState = state;
+                const { token, team, state } = data;
+                joinToken = token as string;
+                gameState = state as GameState;
+                myTeam = team as Team;
+                enoughPlayers = gameState.players.length === 2;
             } else if (type === "GameState") {
-                gameState = data;
+                gameState = data as GameState;
+                enoughPlayers = gameState.players.length === 2;
             } else {
                 console.error("Unknown message type", type);
             }
@@ -74,11 +93,11 @@
         ws.onclose = () => {
             inGame = false;
             joinToken = "";
-            console.log("disconnected");
+            console.log("disconnected by server");
         };
 
         ws.onerror = (err) => {
-            console.error("err", err);
+            console.error("error", err);
         };
     }
 
@@ -97,69 +116,82 @@
     }
 
     function sendChatMessage() {
-        if (!isChatMessageValid) {
+        if (!ws) {
             return;
         }
-        if (!ws) {
+        if (!isChatMessageValid) {
             return;
         }
         ws.send(JSON.stringify({ ChatMsg: { text: chatMessage } }));
         chatMessage = "";
     }
+
+    function sendMove(space: number) {
+        if (!ws) {
+            return;
+        }
+        if (!enoughPlayers) {
+            console.warn("not enough players to play");
+            return;
+        }
+        ws.send(JSON.stringify({ Move: { space } }));
+    }
 </script>
 
-{#if !inGame}
-    <div id="menu">
-        <form id="join-game-form" on:submit|preventDefault={joinGame}>
-            <div class="row">
+<div id="menu">
+    <form id="join-game-form" on:submit|preventDefault={joinGame}>
+        <div class="row">
+            <div class="column">
+                <input
+                    type="text"
+                    id="player-name"
+                    name="name"
+                    placeholder="Player Name"
+                    readonly={inGame}
+                    bind:value={playerName}
+                />
+            </div>
+            <div class="column">
+                <input
+                    type="text"
+                    id="join-token"
+                    name="token"
+                    placeholder="Join Token (Leave blank for new game)"
+                    readonly={inGame}
+                    bind:value={joinToken}
+                />
+            </div>
+            {#if inGame}
                 <div class="column">
-                    <input
-                        type="text"
-                        id="player-name"
-                        name="name"
-                        placeholder="Player Name"
-                        required
-                        readonly={inGame}
-                        bind:value={playerName}
-                    />
+                    <button type="button" on:click={leaveGame}>
+                        Leave Game
+                    </button>
                 </div>
-                <div class="column">
-                    <input
-                        type="text"
-                        id="join-token"
-                        name="token"
-                        placeholder="Join Token (Leave blank for new game)"
-                        readonly={inGame}
-                        bind:value={joinToken}
-                    />
-                </div>
+            {:else}
                 <div class="column">
                     <input type="submit" value="Join Game" />
                 </div>
-            </div>
-        </form>
-    </div>
-{/if}
+            {/if}
+        </div>
+    </form>
+</div>
 
 {#if inGame}
-    <div class="row" id="game-area">
+    <div class="row">
         <div class="column">
-            <div id="game-board">
-                <div class="game-row">
-                    <div class="square" />
-                    <div class="square" />
-                    <div class="square" />
-                </div>
-                <div class="game-row">
-                    <div class="square" />
-                    <div class="square" />
-                    <div class="square" />
-                </div>
-                <div class="game-row">
-                    <div class="square" />
-                    <div class="square" />
-                    <div class="square" />
-                </div>
+            <div class="game-board">
+                {#each gameState.board as square, i}
+                    {#if i % 3 === 0}
+                        <div class="clear" />
+                    {/if}
+                    <button
+                        type="button"
+                        class="square"
+                        on:click={() => sendMove(i)}
+                    >
+                        {square}
+                    </button>
+                {/each}
             </div>
         </div>
 
@@ -167,11 +199,19 @@
             <div id="chat">
                 <h2>Chat</h2>
                 <div class="chat-messages">
-                    {#each gameState.chat as { id, player, text }}
+                    {#each gameState.chat as { id, source, text }}
                         <div class="chat-message" id={`chat-message-${id}`}>
-                            <span class="chat-message-player">
-                                {gameState.players[player].name}:
-                            </span>
+                            {#if source === "System"}
+                                <span class="chat-message-server">
+                                    Server:
+                                </span>
+                            {:else}
+                                <span class="chat-message-player">
+                                    {gameState.players.filter(
+                                        (p) => p.team === myTeam
+                                    )[0].name} ({myTeam}):
+                                </span>
+                            {/if}
                             <span class="chat-message-text">{text}</span>
                         </div>
                     {/each}

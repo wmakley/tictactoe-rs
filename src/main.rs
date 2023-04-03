@@ -119,7 +119,8 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
             game
         });
 
-    // now that we got a game, extract some data from it and send state to client
+    // now that we got a game, add the connected user as a player,
+    // extract some data from it and send state to client
     let (id, player, state, mut receive_from_game) = {
         let mut game = game.lock().unwrap();
 
@@ -133,6 +134,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                 return;
             }
         }
+        game.broadcast_state();
 
         (
             game.id.clone(),
@@ -149,6 +151,16 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
     })
     .unwrap();
     socket.send(Message::Text(json)).await.unwrap();
+
+    let disconnect = || {
+        println!(
+            "Socket: Player {:?} disconnected, removing from game",
+            player
+        );
+        let mut game = game.lock().unwrap();
+        game.remove_player(player.team);
+        game.broadcast_state();
+    };
 
     loop {
         tokio::select! {
@@ -167,11 +179,24 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                             Ok(Message::Text(json)) => {
                                 let parsed: game::FromBrowser = serde_json::from_str(&json).unwrap();
                                 println!("Socket: Parsed message: {:?}", parsed);
-                                game.lock().unwrap().handle_msg(player.id, parsed).unwrap();
+                                let mut game = game.lock().unwrap();
+                                match game.handle_msg(player.team, parsed) {
+                                    Ok(changed) => {
+                                        if changed {
+                                            game.broadcast_state();
+                                        }
+                                    }
+                                    Err(e) => {
+                                        println!("TODO: Socket: Error handling message: {:?}", e);
+                                        // let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
+                                        // socket.send(Message::Text(json)).await.unwrap();
+                                    }
+                                }
                             }
 
                             Ok(Message::Close(_)) => {
                                 println!("Socket: Client closed connection");
+                                disconnect();
                                 return;
                             }
 
@@ -182,6 +207,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                     }
                     None => {
                         println!("Socket: Client disconnected");
+                        disconnect();
                         return;
                     }
                 }

@@ -10,6 +10,8 @@ pub struct Game {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct State {
+    pub turn: char,
+    pub winner: Option<char>,
     pub players: Vec<Player>,
     pub board: Vec<char>,
     pub chat: Vec<ChatMessage>,
@@ -18,6 +20,8 @@ pub struct State {
 impl State {
     pub fn new() -> State {
         State {
+            turn: 'X',
+            winner: None,
             players: Vec::new(),
             board: vec![' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
             chat: Vec::new(),
@@ -27,7 +31,6 @@ impl State {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Player {
-    pub id: usize,
     pub team: char,
     pub name: String,
 }
@@ -35,8 +38,14 @@ pub struct Player {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ChatMessage {
     pub id: usize,
-    pub player: usize,
+    pub source: ChatMessageSource,
     pub text: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum ChatMessageSource {
+    Player(char),
+    System,
 }
 
 impl Game {
@@ -61,49 +70,145 @@ impl Game {
         let team = if self.state.players.len() == 0 {
             'X'
         } else {
-            'O'
+            match self.state.players[0].team {
+                'X' => 'O',
+                'O' => 'X',
+
+                _ => unreachable!(),
+            }
         };
 
         let player = Player {
-            id: self.state.players.len(),
             team: team,
             name: name,
         };
         self.state.players.push(player.clone());
-        self.state_changes.send_replace(self.state.clone());
+        self.add_chat_message(
+            ChatMessageSource::System,
+            format!("{} ({}) has joined the game", player.name, player.team),
+        )
+        .unwrap();
         Ok(player)
     }
 
-    pub fn handle_msg(&mut self, player: usize, msg: FromBrowser) -> Result<(), String> {
+    fn add_chat_message(&mut self, source: ChatMessageSource, text: String) -> Result<(), String> {
+        if text.trim().is_empty() {
+            return Err("Empty message".to_string());
+        }
+
+        let id = self.state.chat.len();
+        self.state.chat.push(ChatMessage {
+            id: id,
+            source: source,
+            text: text,
+        });
+        Ok(())
+    }
+
+    pub fn get_player(&self, team: char) -> Option<&Player> {
+        self.state.players.iter().find(|p| p.team == team)
+    }
+
+    pub fn remove_player(&mut self, team: char) {
+        let player = match self.state.players.iter().find(|p| p.team == team) {
+            Some(p) => p,
+            None => return,
+        };
+        self.add_chat_message(
+            ChatMessageSource::System,
+            format!("{} has left the game", player.name),
+        )
+        .unwrap();
+        self.state.players.retain(|p| p.team != team);
+    }
+
+    pub fn take_turn(&mut self, player: char, space: usize) -> Result<(), String> {
+        if self.state.players.len() < 2 {
+            return Err("Not enough players".to_string());
+        }
+
+        if self.state.turn != player {
+            return Err("Not your turn".to_string());
+        }
+
+        if self.state.board[space] != ' ' {
+            return Err("Invalid move".to_string());
+        }
+
+        self.state.board[space] = player;
+        self.state.turn = if self.state.turn == 'X' { 'O' } else { 'X' };
+        match self.check_for_win() {
+            Some(winner) => {
+                self.state.winner = Some(winner);
+                self.add_chat_message(
+                    ChatMessageSource::System,
+                    format!(
+                        "{} ({}) wins!",
+                        self.get_player(winner).unwrap().name,
+                        winner
+                    ),
+                )
+                .unwrap();
+            }
+            None => (),
+        }
+
+        Ok(())
+    }
+
+    pub fn broadcast_state(&self) {
+        self.state_changes.send_replace(self.state.clone());
+    }
+
+    fn check_for_win(&self) -> Option<char> {
+        let winning_combos = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6],
+        ];
+
+        for combo in winning_combos.iter() {
+            let mut winner = self.state.board[combo[0]];
+            if winner == ' ' {
+                continue;
+            }
+
+            for i in 1..3 {
+                if self.state.board[combo[i]] != winner {
+                    winner = ' ';
+                    break;
+                }
+            }
+
+            if winner != ' ' {
+                return Some(winner);
+            }
+        }
+
+        None
+    }
+
+    pub fn handle_msg(&mut self, player: char, msg: FromBrowser) -> Result<bool, String> {
         println!("Game: Handle Msg: {:?}", msg);
         match msg {
             FromBrowser::ChatMsg { text } => {
-                let id = self.state.chat.len();
-                self.state.chat.push(ChatMessage {
-                    id: id,
-                    player: player,
-                    text: text,
-                });
-                self.state_changes.send(self.state.clone()).unwrap();
-                Ok(())
+                self.add_chat_message(ChatMessageSource::Player(player), text)?;
             }
-            FromBrowser::Move { pos } => {
-                if self.state.board[pos] != ' ' {
-                    return Err("Invalid move".to_string());
-                }
-
-                self.state.board[pos] = self.state.players[player].team;
-                self.state_changes.send(self.state.clone()).unwrap();
-                Ok(())
-            }
+            FromBrowser::Move { space } => self.take_turn(player, space)?,
         }
+        Ok(true)
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum FromBrowser {
     ChatMsg { text: String },
-    Move { pos: usize },
+    Move { space: usize },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -114,4 +219,5 @@ pub enum ToBrowser {
         state: State,
     },
     GameState(State),
+    Error(String),
 }

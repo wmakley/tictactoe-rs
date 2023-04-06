@@ -54,7 +54,10 @@ async fn main() {
         .fallback(get(site::static_file_server))
         .with_state(shared_state);
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    let addr = "0.0.0.0:3000";
+    println!("Starting server on {}", addr);
+
+    axum::Server::bind(&addr.parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();

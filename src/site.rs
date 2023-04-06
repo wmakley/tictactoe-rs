@@ -11,12 +11,13 @@ pub async fn index(_: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
 }
 
 pub async fn static_file_server(uri: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
-    println!("file_handler uri: {:?}", uri);
+    // println!("file_handler uri: {:?}", uri);
     let res = get_static_file(uri.clone()).await?;
-    println!("{:?}", res);
+    // println!("{:?}", res);
 
     // allows retry with `.html` extension if desired (it isn't)
     if res.status() == StatusCode::NOT_FOUND {
+        println!("File Server 404: {:?}", uri);
         Err((StatusCode::NOT_FOUND, "Not Found".to_string()))
         // try with `.html`
         // TODO: handle if the Uri has query parameters

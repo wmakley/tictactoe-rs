@@ -1,4 +1,6 @@
 <script lang="ts">
+    export let socketUrl: string;
+
     interface GameState {
         turn: Team;
         winner: "Draw" | { Win: Team } | null;
@@ -58,7 +60,9 @@
         );
 
         ws = new WebSocket(
-            "ws://localhost:3000/ws?token=" +
+            "ws://" +
+                socketUrl +
+                "ws?token=" +
                 encodeURIComponent(joinToken) +
                 "&name=" +
                 encodeURIComponent(playerName)

@@ -1,7 +1,22 @@
 <script lang="ts">
-    // Default is for local testing. Must be overridden by page in prod.
-    export let socketUrl = "ws://localhost:3000/ws";
-    $: console.debug("socketUrl", socketUrl);
+    import { onMount } from "svelte";
+
+    // https://natclark.com/tutorials/svelte-get-current-url/
+    let url: URL | null = null;
+    let socketUrl = "";
+    let joinToken = "";
+
+    onMount(() => {
+        url = new URL(window.location.href);
+        const socketProtocol = url.protocol === "https:" ? "wss://" : "ws://";
+        socketUrl = `${socketProtocol}${url.host}/ws`;
+
+        joinToken = url.searchParams.get("token") || "";
+        if (joinToken) {
+            playerName = url.searchParams.get("name") || "";
+            joinGame();
+        }
+    });
 
     interface GameState {
         turn: Team;
@@ -30,7 +45,6 @@
         Player: Team;
     }
 
-    let joinToken = "";
     let playerName = "";
     let inGame = false;
     let enoughPlayers = false;

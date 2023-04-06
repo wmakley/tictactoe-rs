@@ -8,4 +8,5 @@ release:
 .PHONY: js
 js:
 	cd svelte && pnpm run build
+	rm -rf static/_app
 	cp -rv svelte/build/* static/

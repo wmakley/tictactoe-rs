@@ -3,6 +3,7 @@ WORKDIR /usr/src/myapp
 
 # cache dependencies
 COPY Cargo.toml .
+COPY Cargo.lock .
 RUN echo "fn main() {}" > dummy.rs
 RUN sed -i 's#src/main.rs#dummy.rs#' Cargo.toml
 RUN cargo build --release
@@ -17,3 +18,4 @@ WORKDIR /app
 COPY static /app/static
 CMD ["tictactoe-rs"]
 EXPOSE 3000
+ENV RUST_LOG "tower_http=trace"

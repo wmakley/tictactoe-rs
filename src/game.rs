@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
+use tracing::debug;
 
 #[derive(Debug)]
 pub struct Game {
@@ -223,7 +224,7 @@ impl Game {
     }
 
     pub fn handle_msg(&mut self, player: char, msg: FromBrowser) -> Result<bool, String> {
-        println!("Game: Handle Msg: {:?}", msg);
+        debug!("Game: Handle Msg: {:?}", msg);
         match msg {
             FromBrowser::ChatMsg { text } => {
                 self.add_chat_message(ChatMessageSource::Player(player), text)?;

@@ -19,6 +19,9 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::{Arc, Mutex};
+use tower_http::trace::TraceLayer;
+use tracing::{debug, error, info, instrument, trace, warn};
+use tracing_subscriber;
 
 #[derive(Debug)]
 struct AppState {
@@ -38,6 +41,8 @@ impl Display for AppState {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
+
     // let redis_address = std::env::var("REDIS_ADDRESS").unwrap();
     // let client = redis::Client::open(redis_address).unwrap();
     // let redis_conn_mgr = client.get_tokio_connection_manager().await.unwrap();
@@ -53,7 +58,8 @@ async fn main() {
         .route("/ws", get(open_conn))
         .route("/health", get(|| async { StatusCode::OK }))
         .fallback(get(site::static_file_server))
-        .with_state(shared_state);
+        .with_state(shared_state)
+        .layer(TraceLayer::new_for_http());
 
     let addr = "0.0.0.0:3000";
     println!("Starting server on {}", addr);
@@ -100,7 +106,7 @@ async fn open_conn(
 
 async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<AppState>) {
     // let redis = state.redis_conn_mgr.clone();
-    println!("New WebSocket connection with params: '{:?}'", params);
+    debug!("New WebSocket connection with params: '{:?}'", params);
 
     let game: Arc<Mutex<Game>> = params
         .token
@@ -135,7 +141,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                 player = _player;
             }
             Err(e) => {
-                println!("Socket: TODO: Error adding player: {:?}", e);
+                error!("Socket: TODO: Error adding player: {:?}", e);
                 return;
             }
         }
@@ -158,14 +164,14 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
     socket.send(Message::Text(json)).await.unwrap();
 
     let disconnect = || {
-        println!(
+        debug!(
             "Socket: Player {:?} disconnected, removing from game",
             player
         );
         let mut game = game.lock().unwrap();
         game.remove_player(player.team);
         if game.state.players.is_empty() {
-            println!("Socket: Game is empty, removing globally");
+            debug!("Socket: Game is empty, removing globally");
             state.games.lock().unwrap().remove(&game.id);
         }
         game.broadcast_state();
@@ -175,7 +181,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
         tokio::select! {
             _ = receive_from_game.changed() => {
                 let new_state = receive_from_game.borrow().clone();
-                // println!("Socket: Sending game state change: {:?}", new_state);
+                // trace!("Socket: Sending game state change: {:?}", new_state);
 
                 let json = serde_json::to_string(&game::ToBrowser::GameState(new_state)).unwrap();
                 socket.send(Message::Text(json)).await.unwrap();
@@ -183,11 +189,11 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
             msg = socket.recv() => {
                 match msg {
                     Some(raw_msg) => {
-                        println!("Socket: Received message: {:?}", raw_msg);
+                        debug!("Socket: Received message: {:?}", raw_msg);
                         match raw_msg {
                             Ok(Message::Text(json)) => {
                                 let parsed: game::FromBrowser = serde_json::from_str(&json).unwrap();
-                                println!("Socket: Parsed message: {:?}", parsed);
+                                debug!("Socket: Parsed message: {:?}", parsed);
 
                                 let server_err = {
                                     let mut game = game.lock().unwrap();
@@ -208,25 +214,25 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                                 };
 
                                 if let Some(e) = server_err {
-                                    println!("Socket: Error handling message: {:?}", e);
+                                    debug!("Socket: Error handling message: {:?}", e);
                                     let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
                                     socket.send(Message::Text(json)).await.unwrap();
                                 }
                             }
 
                             Ok(Message::Close(_)) => {
-                                println!("Socket: Client closed connection");
+                                debug!("Socket: Client closed connection");
                                 disconnect();
                                 return;
                             }
 
                             _ => {
-                                println!("Socket: Unhandled message type");
+                                debug!("Socket: Unhandled message type");
                             }
                         }
                     }
                     None => {
-                        println!("Socket: Client disconnected");
+                        debug!("Socket: Client disconnected");
                         disconnect();
                         return;
                     }

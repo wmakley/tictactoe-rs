@@ -1,5 +1,7 @@
 <script lang="ts">
-    export let socketUrl: string;
+    // Default is for local testing. Must be overridden by page in prod.
+    export let socketUrl = "ws://localhost:3000/ws";
+    $: console.debug("socketUrl", socketUrl);
 
     interface GameState {
         turn: Team;
@@ -51,6 +53,9 @@
         if (inGame) {
             return;
         }
+        if (!socketUrl) {
+            throw new Error("socketUrl not set");
+        }
 
         console.log(
             "Joining game with player name:",
@@ -59,14 +64,11 @@
             joinToken
         );
 
-        ws = new WebSocket(
-            "ws://" +
-                socketUrl +
-                "ws?token=" +
-                encodeURIComponent(joinToken) +
-                "&name=" +
-                encodeURIComponent(playerName)
-        );
+        const url = new URL(socketUrl);
+        url.searchParams.set("token", joinToken);
+        url.searchParams.set("name", playerName);
+
+        ws = new WebSocket(url.href);
 
         ws.onopen = () => {
             chatMessage = "";

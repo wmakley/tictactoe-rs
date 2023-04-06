@@ -4,6 +4,7 @@ use axum::{
 };
 use tower::util::ServiceExt;
 use tower_http::services::ServeDir;
+use tracing::{debug};
 
 pub async fn index(_: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
     // println!("root uri: {:?}", uri);
@@ -17,7 +18,8 @@ pub async fn static_file_server(uri: Uri) -> Result<Response<BoxBody>, (StatusCo
 
     // allows retry with `.html` extension if desired (it isn't)
     if res.status() == StatusCode::NOT_FOUND {
-        println!("File Server 404: {:?}", uri);
+        debug!("File Not Found: {:?}", uri);
+        // println!("File Server 404: {:?}", uri);
         Err((StatusCode::NOT_FOUND, "Not Found".to_string()))
         // try with `.html`
         // TODO: handle if the Uri has query parameters

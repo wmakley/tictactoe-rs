@@ -8,8 +8,7 @@ release:
 .PHONY: js
 js:
 	cd svelte && pnpm run build
-	rm -rf static/_app
-	cp -rv svelte/build/* static/
+	rsync -av --delete svelte/build/ static/
 
 .PHONY: docker-image
 docker-image:

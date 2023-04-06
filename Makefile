@@ -1,3 +1,4 @@
 .PHONY: js
 js:
-    cd elm && elm make
+	cd svelte && pnpm run build
+	cp -rv svelte/build/* static/

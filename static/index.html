@@ -1,94 +1,70 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <title>Tic Tac Toe</title>
-
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
+    <meta charset="utf-8" />
+    <link rel="icon" href="./favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
+    <link rel="manifest" href="./site.webmanifest">
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
-    <link rel="stylesheet" href="/app.css">
+    <link rel="stylesheet" href="./app.css">
 
-    <script async src="https://unpkg.com/es-module-shims@1.7.0/dist/es-module-shims.js"></script>
-    <script type="importmap">
-        {
-            "imports": {
-                "app": "/app.js"
-            }
-        }
-    </script>
-    <script type="module">
-        import app from 'app';
-        app();
-    </script>
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="content-security-policy" content="">
+		<link rel="modulepreload" href="./_app/immutable/entry/start.cb16c30a.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/index.259c4853.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/singletons.de0c89df.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/app.f9b6494e.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/layout.svelte.8cff1eb7.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/_layout.js.984db11e.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/_layout.da46b06b.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/_page.svelte.2ee11cb4.js">
 </head>
 
-<body>
-    <div class="container">
-        <h1>Tic Tac Toe</h1>
+<body data-sveltekit-preload-data="hover">
+    <div style="display: contents">
 
-        <h2 id="alert"></h2>
 
-        <div id="menu">
-            <form id="join-game-form">
-                <div class="row">
-                    <div class="column">
-                        <input type="text" id="join-token" name="token"
-                            placeholder="Join Token (Leave blank for new game)">
-                    </div>
-                    <div class="column">
-                        <input type="submit" value="Join Game">
-                    </div>
-                </div>
-            </form>
-        </div>
+<div class="container"><h1>Tic Tac Toe</h1>
+    <div id="menu"><form id="join-game-form"><div class="row"><div class="column"><label for="player-name">Player Name</label>
+                <input type="text" id="player-name" name="name" placeholder="Player Name"  value=""></div>
+            <div class="column"><label for="join-token">Game Token</label>
+                <input type="text" id="join-token" name="token" placeholder="Join Token (Leave blank for new game)"  value=""></div>
+            <div class="column"><input type="submit" value="Join Game" class="horizontal-submit"></div></div></form></div>
 
-        <div class="row hidden" id="game-area">
-            <div class="column">
-                <div id="game-board">
-                    <div class="game-row">
-                        <div class="square"></div>
-                        <div class="square"></div>
-                        <div class="square"></div>
-                    </div>
-                    <div class="game-row">
-                        <div class="square"></div>
-                        <div class="square"></div>
-                        <div class="square"></div>
-                    </div>
-                    <div class="game-row">
-                        <div class="square"></div>
-                        <div class="square"></div>
-                        <div class="square"></div>
-                    </div>
-                </div>
-            </div>
+</div>
 
-            <div class="column">
-                <div id="chat">
-                    <h2>Chat</h2>
-                    <div id="chat-messages" class="chat-messages"></div>
-                    <form id="chat-form">
-                        <div class="row">
-                            <div class="column">
-                                <input type="text" id="chat-msg" name="msg" placeholder="Message">
-                            </div>
-                            <div class="column">
-                                <input type="submit" value="Send" id="chat-form-submit">
-                                <button type="button" id="leave-game">Leave Game</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+
+			
+			<script>
+				{
+					__sveltekit_11e2diz = {
+						env: {},
+						base: new URL(".", location).pathname.slice(0, -1),
+						element: document.currentScript.parentElement
+					};
+
+					const data = [null,null];
+
+					Promise.all([
+						import("./_app/immutable/entry/start.cb16c30a.js"),
+						import("./_app/immutable/entry/app.f9b6494e.js")
+					]).then(([kit, app]) => {
+						kit.start(app, __sveltekit_11e2diz.element, {
+							node_ids: [0, 2],
+							data,
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
 </body>
 
 </html>

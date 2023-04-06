@@ -8,7 +8,7 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         Query, State,
     },
-    // http::{Response, StatusCode},
+    http::StatusCode,
     response::Response,
     routing::get,
     Router,
@@ -51,6 +51,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(site::index))
         .route("/ws", get(open_conn))
+        .route("/health", get(|| async { StatusCode::OK }))
         .fallback(get(site::static_file_server))
         .with_state(shared_state);
 
@@ -241,11 +242,4 @@ fn random_token() -> String {
         .take(7)
         .map(char::from)
         .collect();
-}
-
-async fn add_ai_player(game: &game::Game) {
-    let mut rx = game.state_changes.subscribe();
-    loop {
-        let changed = rx.changed().await;
-    }
 }

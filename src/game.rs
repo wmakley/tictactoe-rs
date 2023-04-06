@@ -13,7 +13,7 @@ pub struct Game {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct State {
     pub turn: char,
-    pub winner: Option<char>,
+    pub winner: Option<EndState>,
     pub players: Vec<Player>,
     pub board: Vec<char>,
     pub chat: Vec<ChatMessage>,
@@ -29,6 +29,12 @@ impl State {
             chat: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum EndState {
+    Win(char),
+    Draw,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -148,24 +154,28 @@ impl Game {
 
         self.add_chat_message(
             ChatMessageSource::Player(player),
-            format!("Played {} at ({}, {}).", player, space % 3 + 1, space / 3 + 1),
+            format!(
+                "Played {} at ({}, {}).",
+                player,
+                space % 3 + 1,
+                space / 3 + 1
+            ),
         )
         .unwrap();
 
-        match self.check_for_win() {
-            Some(winner) => {
-                self.state.winner = Some(winner);
-                self.add_chat_message(
-                    ChatMessageSource::System,
-                    format!(
-                        "{} ({}) wins!",
-                        self.get_player(winner).unwrap().name,
-                        winner
-                    ),
-                )
+        if let Some(winner) = self.check_for_win() {
+            self.state.winner = Some(EndState::Win(winner));
+            self.add_chat_message(
+                ChatMessageSource::System,
+                format!("{} wins!", self.get_player(winner).unwrap()),
+            )
+            .unwrap();
+        }
+
+        if self.check_for_draw() {
+            self.state.winner = Some(EndState::Draw);
+            self.add_chat_message(ChatMessageSource::System, "It's a draw!".to_string())
                 .unwrap();
-            }
-            None => (),
         }
 
         Ok(())
@@ -206,6 +216,10 @@ impl Game {
         }
 
         None
+    }
+
+    fn check_for_draw(&self) -> bool {
+        self.state.board.iter().all(|&c| c != ' ')
     }
 
     pub fn handle_msg(&mut self, player: char, msg: FromBrowser) -> Result<bool, String> {

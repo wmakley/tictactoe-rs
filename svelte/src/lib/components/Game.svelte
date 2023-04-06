@@ -1,7 +1,7 @@
 <script lang="ts">
     interface GameState {
         turn: Team;
-        winner: Team | null;
+        winner: "Draw" | { Win: Team } | null;
         players: Player[];
         board: Square[];
         chat: ChatMessage[];
@@ -134,10 +134,10 @@
         if (!ws) {
             return;
         }
-        // if (!enoughPlayers) {
-        //     console.warn("not enough players to play");
-        //     return;
-        // }
+        if (!enoughPlayers) {
+            console.warn("not enough players to play");
+            return;
+        }
         ws.send(JSON.stringify({ Move: { space } }));
     }
 </script>
@@ -168,6 +168,12 @@
                     name="token"
                     placeholder="Join Token (Leave blank for new game)"
                     readonly={inGame}
+                    on:click={(e) => {
+                        if (inGame) {
+                            e.currentTarget.select();
+                            navigator.clipboard.writeText(joinToken);
+                        }
+                    }}
                     bind:value={joinToken}
                 />
             </div>
@@ -195,6 +201,24 @@
 </div>
 
 {#if inGame}
+    <div class="status">
+        {#if !enoughPlayers}
+            Waiting for opponent...
+        {:else if gameState.winner}
+            {#if gameState.winner === "Draw"}
+                Draw!
+            {:else if gameState.winner.Win === myTeam}
+                You won!
+            {:else}
+                You lost!
+            {/if}
+        {:else if gameState.turn === myTeam}
+            Your turn
+        {:else}
+            Opponent's turn
+        {/if}
+    </div>
+
     <div class="row">
         <div class="column">
             <div class="game-board">

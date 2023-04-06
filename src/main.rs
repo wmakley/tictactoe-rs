@@ -171,7 +171,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
         tokio::select! {
             _ = receive_from_game.changed() => {
                 let new_state = receive_from_game.borrow().clone();
-                println!("Socket: Sending game state change: {:?}", new_state);
+                // println!("Socket: Sending game state change: {:?}", new_state);
 
                 let json = serde_json::to_string(&game::ToBrowser::GameState(new_state)).unwrap();
                 socket.send(Message::Text(json)).await.unwrap();
@@ -238,4 +238,11 @@ fn random_token() -> String {
         .take(7)
         .map(char::from)
         .collect();
+}
+
+async fn add_ai_player(game: &game::Game) {
+    let mut rx = game.state_changes.subscribe();
+    loop {
+        let changed = rx.changed().await;
+    }
 }

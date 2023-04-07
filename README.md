@@ -12,7 +12,11 @@ cargo run
 ```
 
 Open http://localhost:3000/ in a browser. It should just work! But assets will
-not be compiled on the fly.
+not be compiled on the fly. To compile assets, simply run:
+
+```sh
+make js
+```
 
 ## Frontend Development
 

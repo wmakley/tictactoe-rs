@@ -29,6 +29,7 @@
     interface Player {
         team: Team;
         name: string;
+        wins: number;
     }
 
     type Team = "X" | "O";

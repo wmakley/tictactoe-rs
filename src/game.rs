@@ -42,6 +42,7 @@ pub enum EndState {
 pub struct Player {
     pub team: char,
     pub name: String,
+    pub wins: i32,
 }
 
 impl Display for Player {
@@ -96,6 +97,7 @@ impl Game {
         let player = Player {
             team: team,
             name: name,
+            wins: 0,
         };
         self.state.players.push(player.clone());
         self.add_chat_message(
@@ -122,6 +124,10 @@ impl Game {
 
     pub fn get_player(&self, team: char) -> Option<&Player> {
         self.state.players.iter().find(|p| p.team == team)
+    }
+
+    pub fn get_player_mut(&mut self, team: char) -> Option<&mut Player> {
+        self.state.players.iter_mut().find(|p| p.team == team)
     }
 
     pub fn remove_player(&mut self, team: char) {
@@ -170,6 +176,7 @@ impl Game {
 
         if let Some(winner) = self.check_for_win() {
             self.state.winner = Some(EndState::Win(winner));
+            self.get_player_mut(winner).unwrap().wins += 1;
             self.add_chat_message(
                 ChatMessageSource::System,
                 format!("{} wins!", self.get_player(winner).unwrap()),

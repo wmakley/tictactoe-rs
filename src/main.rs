@@ -1,4 +1,3 @@
-mod db;
 mod game;
 mod site;
 

@@ -5,4 +5,7 @@
 <div class="container">
     <h1>Tic Tac Toe</h1>
     <Game />
+    <footer>
+        <p><a href="https://github.com/wmakley/tictactoe-rs">Source Code</a></p>
+    </footer>
 </div>

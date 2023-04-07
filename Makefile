@@ -1,6 +1,10 @@
 .PHONY: all
 all: release js
 
+.PHONY: deploy
+deploy: js
+	fly deploy
+
 .PHONY: release
 release:
 	cargo build --release

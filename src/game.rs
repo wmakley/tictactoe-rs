@@ -142,6 +142,10 @@ impl Game {
             return Err("Not enough players".to_string());
         }
 
+        if self.state.winner.is_some() {
+            return Err("Game is over".to_string());
+        }
+
         if self.state.turn != player {
             return Err("Not your turn".to_string());
         }

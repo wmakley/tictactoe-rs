@@ -18,4 +18,4 @@ WORKDIR /app
 COPY static /app/static
 CMD ["tictactoe-rs"]
 EXPOSE 3000
-ENV RUST_LOG "tower_http=trace"
+ENV RUST_LOG "tictactoe_rs=trace"

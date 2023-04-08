@@ -134,17 +134,15 @@
     }
 
     let chatMessage = "";
-    let isChatMessageValid = false;
-    $: {
-        isChatMessageValid =
-            (chatMessage || "").replace(/^\s+|\s+$/gm, "").length > 0;
+    function isChatMessageValid(chatMessage: string): boolean {
+        return (chatMessage || "").replace(/^\s+|\s+$/gm, "").length > 0;
     }
 
     function sendChatMessage() {
         if (!ws) {
             return;
         }
-        if (!isChatMessageValid) {
+        if (!isChatMessageValid(chatMessage)) {
             return;
         }
         ws.send(JSON.stringify({ ChatMsg: { text: chatMessage } }));
@@ -312,7 +310,8 @@
                             <input
                                 type="submit"
                                 value="Send"
-                                disabled={!inGame || !isChatMessageValid}
+                                disabled={!inGame ||
+                                    !isChatMessageValid(chatMessage)}
                             />
                         </div>
                         {#if gameState.winner}

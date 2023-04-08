@@ -339,14 +339,14 @@
                                 disabled={!inGame ||
                                     !isChatMessageValid(chatMessage)}
                             />
+                            {#if gameState.winner}
+                                <input
+                                    type="button"
+                                    on:click={rematch}
+                                    value="Rematch!"
+                                />
+                            {/if}
                         </div>
-                        {#if gameState.winner}
-                            <div class="column">
-                                <button type="button" on:click={rematch}>
-                                    Rematch
-                                </button>
-                            </div>
-                        {/if}
                     </div>
                 </form>
             </div>

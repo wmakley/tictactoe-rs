@@ -124,20 +124,12 @@ impl Game {
         Ok(())
     }
 
-    pub fn get_player(&self, id: PlayerID) -> Option<&Player> {
-        self.state.players.iter().find(|p| p.id == id)
-    }
-
     pub fn get_player_index(&self, id: PlayerID) -> Option<usize> {
         self.state.players.iter().position(|p| p.id == id)
     }
 
     pub fn get_player_index_by_team(&self, team: char) -> Option<usize> {
         self.state.players.iter().position(|p| p.team == team)
-    }
-
-    pub fn get_player_mut(&mut self, id: PlayerID) -> Option<&mut Player> {
-        self.state.players.iter_mut().find(|p| p.id == id)
     }
 
     pub fn remove_player(&mut self, id: PlayerID) {
@@ -254,6 +246,11 @@ impl Game {
             FromBrowser::Rematch => {
                 self.add_chat_message(ChatMessageSource::Player(player_id), "Rematch!".to_string())
                     .unwrap();
+                self.add_chat_message(
+                    ChatMessageSource::System,
+                    "Players have swapped sides.".to_string(),
+                )
+                .unwrap();
                 self.state.board.iter_mut().for_each(|c| *c = ' ');
                 self.state.turn = 'X';
                 self.state.winner = None;

@@ -8,7 +8,7 @@ As a pre-requisite to compile and run only the server, you must have rust and
 cargo installed.
 
 ```sh
-cargo run
+RUST_LOG=tower_http=trace cargo run
 ```
 
 Open http://localhost:3000/ in a browser. It should just work! But assets will

@@ -241,6 +241,13 @@ impl Game {
                 self.add_chat_message(ChatMessageSource::Player(player), text)?;
             }
             FromBrowser::Move { space } => self.take_turn(player, space)?,
+            FromBrowser::Rematch => {
+                self.add_chat_message(ChatMessageSource::Player(player), "Rematch!".to_string())
+                    .unwrap();
+                self.state.board.iter_mut().for_each(|c| *c = ' ');
+                self.state.turn = 'X';
+                self.state.winner = None;
+            }
         }
         Ok(true)
     }
@@ -250,6 +257,7 @@ impl Game {
 pub enum FromBrowser {
     ChatMsg { text: String },
     Move { space: usize },
+    Rematch,
 }
 
 #[derive(Debug, Clone, Serialize)]

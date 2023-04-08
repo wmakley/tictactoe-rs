@@ -159,7 +159,26 @@
             console.warn("not enough players to play");
             return;
         }
+        if (gameState.turn !== myTeam) {
+            console.warn("not my turn");
+            return;
+        }
+        if (gameState.winner) {
+            console.warn("game is over");
+            return;
+        }
         ws.send(JSON.stringify({ Move: { space } }));
+    }
+
+    function rematch() {
+        if (!ws) {
+            return;
+        }
+        if (!gameState.winner) {
+            console.warn("game is not over");
+            return;
+        }
+        ws.send(JSON.stringify({ Rematch: {} }));
     }
 </script>
 
@@ -248,6 +267,7 @@
                         type="button"
                         class="game-square {square}"
                         disabled={!enoughPlayers ||
+                            gameState.winner !== null ||
                             gameState.turn !== myTeam ||
                             square !== " "}
                         on:click={() => sendMove(i)}
@@ -295,6 +315,13 @@
                                 disabled={!inGame || !isChatMessageValid}
                             />
                         </div>
+                        {#if gameState.winner}
+                            <div class="column">
+                                <button type="button" on:click={rematch}>
+                                    Rematch
+                                </button>
+                            </div>
+                        {/if}
                     </div>
                 </form>
             </div>

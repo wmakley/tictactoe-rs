@@ -31,10 +31,13 @@
     }
 
     interface Player {
+        id: PlayerID;
         team: Team;
         name: string;
         wins: number;
     }
+
+    type PlayerID = number;
 
     type Team = "X" | "O";
     type Square = " " | "X" | "O";
@@ -47,13 +50,20 @@
 
     type ChatMessageSource = PlayerSource | "System";
     interface PlayerSource {
-        Player: Team;
+        Player: number;
     }
 
     let playerName = "";
     let inGame = false;
     let enoughPlayers = false;
-    let myTeam: Team = "X";
+    // ID should be constant across rematches
+    let myPlayerId: PlayerID = -1;
+    let me: Player = {
+        id: 0,
+        team: "X",
+        name: "",
+        wins: 0,
+    };
 
     let gameState: GameState = {
         turn: "X",
@@ -62,8 +72,8 @@
         board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
         chat: [],
     };
-    function getPlayer(gameState: GameState, team: Team) {
-        return gameState.players.find((p) => p.team === team);
+    function getPlayer(gameState: GameState, id: PlayerID) {
+        return gameState.players.find((p) => p.id === id);
     }
 
     let ws: WebSocket | null = null;
@@ -103,10 +113,11 @@
             // console.debug("type", type, "data", data);
 
             if (type === "JoinedGame") {
-                const { token, team, state } = data;
+                const { token, player_id, state } = data;
                 joinToken = token as string;
                 gameState = state as GameState;
-                myTeam = team as Team;
+                myPlayerId = player_id as number;
+                me = getPlayer(gameState, myPlayerId)!;
                 enoughPlayers = gameState.players.length === 2;
                 window.history.replaceState(
                     {},
@@ -118,6 +129,7 @@
             } else if (type === "GameState") {
                 gameState = data as GameState;
                 enoughPlayers = gameState.players.length === 2;
+                me = getPlayer(gameState, myPlayerId)!;
             } else if (type === "Error") {
                 console.error("Error from server", data);
                 window.alert(data);
@@ -173,7 +185,7 @@
             console.warn("not enough players to play");
             return;
         }
-        if (gameState.turn !== myTeam) {
+        if (gameState.turn !== me.team) {
             console.warn("not my turn");
             return;
         }
@@ -252,19 +264,19 @@
     </form>
 </div>
 
-{#if inGame}
+<div class={inGame ? "" : "hidden"}>
     <div class="status">
         {#if !enoughPlayers}
             Waiting for opponent...
         {:else if gameState.winner}
             {#if gameState.winner === "Draw"}
                 Draw!
-            {:else if gameState.winner.Win === myTeam}
+            {:else if gameState.winner.Win === me.team}
                 You won!
             {:else}
                 You lost!
             {/if}
-        {:else if gameState.turn === myTeam}
+        {:else if gameState.turn === me.team}
             Your turn
         {:else}
             Opponent's turn
@@ -280,7 +292,7 @@
                         class="game-square {square}"
                         disabled={!enoughPlayers ||
                             gameState.winner !== null ||
-                            gameState.turn !== myTeam ||
+                            gameState.turn !== me.team ||
                             square !== " "}
                         on:click={() => sendMove(i)}
                     >
@@ -340,4 +352,4 @@
             </div>
         </div>
     </div>
-{/if}
+</div>

@@ -20,7 +20,7 @@ use std::fmt::{Display, Formatter};
 use std::sync::{Arc, Mutex};
 use tokio::time::{sleep, Duration};
 use tower_http::trace::TraceLayer;
-use tracing::{debug, error, info, instrument, trace, warn};
+use tracing::{debug, error};
 use tracing_subscriber;
 
 #[derive(Debug)]
@@ -157,7 +157,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
 
     let json = serde_json::to_string(&game::ToBrowser::JoinedGame {
         token: id,
-        team: player.team,
+        player_id: player.id,
         state: game_state,
     })
     .unwrap();
@@ -169,7 +169,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
             player
         );
         let mut game = game.lock().unwrap();
-        game.remove_player(player.team);
+        game.remove_player(player.id);
         if game.state.players.is_empty() {
             debug!("Socket: Game is empty, removing globally");
             state.games.lock().unwrap().remove(&game.id);
@@ -201,7 +201,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
 
                                 let server_err = {
                                     let mut game = game.lock().unwrap();
-                                    let result = game.handle_msg(player.team, parsed);
+                                    let result = game.handle_msg(player.id, parsed);
                                     match result {
                                         Ok(changed) => {
                                             if changed {

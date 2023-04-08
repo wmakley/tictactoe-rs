@@ -40,10 +40,13 @@ pub enum EndState {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Player {
+    pub id: PlayerID,
     pub team: char,
     pub name: String,
     pub wins: i32,
 }
+
+pub type PlayerID = i32;
 
 impl Display for Player {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,7 +63,7 @@ pub struct ChatMessage {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ChatMessageSource {
-    Player(char),
+    Player(PlayerID),
     System,
 }
 
@@ -83,18 +86,17 @@ impl Game {
             return Err("Game is full".to_string());
         }
 
-        let team = if self.state.players.len() == 0 {
-            'X'
-        } else {
-            match self.state.players[0].team {
-                'X' => 'O',
-                'O' => 'X',
+        let last_player = self.state.players.last();
 
-                _ => unreachable!(),
-            }
+        let id = last_player.map(|p| p.id + 1).unwrap_or(0);
+        let team = if last_player.map(|p| p.team).unwrap_or('X') == 'X' {
+            'O'
+        } else {
+            'X'
         };
 
         let player = Player {
+            id: id,
             team: team,
             name: name,
             wins: 0,
@@ -122,16 +124,16 @@ impl Game {
         Ok(())
     }
 
-    pub fn get_player(&self, team: char) -> Option<&Player> {
-        self.state.players.iter().find(|p| p.team == team)
+    pub fn get_player(&self, id: PlayerID) -> Option<&Player> {
+        self.state.players.iter().find(|p| p.id == id)
     }
 
-    pub fn get_player_mut(&mut self, team: char) -> Option<&mut Player> {
-        self.state.players.iter_mut().find(|p| p.team == team)
+    pub fn get_player_mut(&mut self, id: PlayerID) -> Option<&mut Player> {
+        self.state.players.iter_mut().find(|p| p.id == id)
     }
 
-    pub fn remove_player(&mut self, team: char) {
-        let player = match self.state.players.iter().find(|p| p.team == team) {
+    pub fn remove_player(&mut self, id: PlayerID) {
+        let player = match self.state.players.iter().find(|p| p.id == id) {
             Some(p) => p,
             None => return,
         };
@@ -140,10 +142,10 @@ impl Game {
             format!("{} has left the game", player.name),
         )
         .unwrap();
-        self.state.players.retain(|p| p.team != team);
+        self.state.players.retain(|p| p.id != id);
     }
 
-    pub fn take_turn(&mut self, player: char, space: usize) -> Result<(), String> {
+    pub fn take_turn(&mut self, player_id: PlayerID, space: usize) -> Result<(), String> {
         if self.state.players.len() < 2 {
             return Err("Not enough players".to_string());
         }
@@ -152,7 +154,12 @@ impl Game {
             return Err("Game is over".to_string());
         }
 
-        if self.state.turn != player {
+        let player = match self.get_player(player_id) {
+            Some(p) => p,
+            None => return Err("Invalid player".to_string()),
+        };
+
+        if self.state.turn != player.team {
             return Err("Not your turn".to_string());
         }
 
@@ -160,11 +167,11 @@ impl Game {
             return Err("Invalid move".to_string());
         }
 
-        self.state.board[space] = player;
+        self.state.board[space] = player.team;
         self.state.turn = if self.state.turn == 'X' { 'O' } else { 'X' };
 
         self.add_chat_message(
-            ChatMessageSource::Player(player),
+            ChatMessageSource::Player(player.id),
             format!(
                 "Played {} at ({}, {}).",
                 player,
@@ -174,14 +181,17 @@ impl Game {
         )
         .unwrap();
 
-        if let Some(winner) = self.check_for_win() {
-            self.state.winner = Some(EndState::Win(winner));
-            self.get_player_mut(winner).unwrap().wins += 1;
-            self.add_chat_message(
-                ChatMessageSource::System,
-                format!("{} wins!", self.get_player(winner).unwrap()),
-            )
-            .unwrap();
+        if let Some(winning_team) = self.check_for_win() {
+            self.state.winner = Some(EndState::Win(winning_team));
+            let mut winner = self
+                .state
+                .players
+                .iter_mut()
+                .find(|p| p.team == winning_team)
+                .unwrap();
+            winner.wins += 1;
+            self.add_chat_message(ChatMessageSource::System, format!("{} wins!", winner))
+                .unwrap();
         } else if self.check_for_draw() {
             self.state.winner = Some(EndState::Draw);
             self.add_chat_message(ChatMessageSource::System, "It's a draw!".to_string())
@@ -232,19 +242,27 @@ impl Game {
         self.state.board.iter().all(|&c| c != ' ')
     }
 
-    pub fn handle_msg(&mut self, player: char, msg: FromBrowser) -> Result<bool, String> {
+    pub fn handle_msg(&mut self, player_id: PlayerID, msg: FromBrowser) -> Result<bool, String> {
         debug!("Game: Handle Msg: {:?}", msg);
         match msg {
             FromBrowser::ChatMsg { text } => {
-                self.add_chat_message(ChatMessageSource::Player(player), text)?;
+                self.add_chat_message(ChatMessageSource::Player(player_id), text)?;
             }
-            FromBrowser::Move { space } => self.take_turn(player, space)?,
+            FromBrowser::Move { space } => self.take_turn(player_id, space)?,
             FromBrowser::Rematch => {
-                self.add_chat_message(ChatMessageSource::Player(player), "Rematch!".to_string())
+                self.add_chat_message(ChatMessageSource::Player(player_id), "Rematch!".to_string())
                     .unwrap();
                 self.state.board.iter_mut().for_each(|c| *c = ' ');
                 self.state.turn = 'X';
                 self.state.winner = None;
+                // Swap teams
+                self.state.players.iter_mut().for_each(|p| {
+                    if p.team == 'X' {
+                        p.team = 'O';
+                    } else {
+                        p.team = 'X';
+                    }
+                });
             }
         }
         Ok(true)
@@ -254,7 +272,7 @@ impl Game {
 #[derive(Debug, Clone, Deserialize)]
 pub enum FromBrowser {
     ChatMsg { text: String },
-    Move { space: usize },
+    Move { space: PlayerID },
     Rematch,
 }
 
@@ -262,7 +280,7 @@ pub enum FromBrowser {
 pub enum ToBrowser {
     JoinedGame {
         token: String,
-        team: char,
+        player_id: PlayerID,
         state: State,
     },
     GameState(State),

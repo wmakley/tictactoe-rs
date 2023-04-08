@@ -18,6 +18,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::{Arc, Mutex};
+use tokio::time::{sleep, Duration};
 use tower_http::trace::TraceLayer;
 use tracing::{debug, error, info, instrument, trace, warn};
 use tracing_subscriber;
@@ -178,6 +179,10 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
 
     loop {
         tokio::select! {
+            _ = sleep(Duration::from_secs(10)) => {
+                debug!("Socket: Ping");
+                socket.send(Message::Ping(vec![])).await.unwrap();
+            }
             _ = receive_from_game.changed() => {
                 let new_state = receive_from_game.borrow().clone();
                 // trace!("Socket: Sending game state change: {:?}", new_state);
@@ -225,8 +230,17 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                                 return;
                             }
 
+                            Ok(Message::Ping(_)) => {
+                                debug!("Socket: Client pinged");
+                                socket.send(Message::Pong(vec![])).await.unwrap();
+                            }
+
+                            Ok(Message::Pong(_)) => {
+                                debug!("Socket: Client ponged");
+                            }
+
                             _ => {
-                                debug!("Socket: Unhandled message type");
+                                debug!("Socket: Unhandled message type, ignoring");
                             }
                         }
                     }

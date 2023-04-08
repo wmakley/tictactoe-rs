@@ -128,6 +128,14 @@ impl Game {
         self.state.players.iter().find(|p| p.id == id)
     }
 
+    pub fn get_player_index(&self, id: PlayerID) -> Option<usize> {
+        self.state.players.iter().position(|p| p.id == id)
+    }
+
+    pub fn get_player_index_by_team(&self, team: char) -> Option<usize> {
+        self.state.players.iter().position(|p| p.team == team)
+    }
+
     pub fn get_player_mut(&mut self, id: PlayerID) -> Option<&mut Player> {
         self.state.players.iter_mut().find(|p| p.id == id)
     }
@@ -154,12 +162,13 @@ impl Game {
             return Err("Game is over".to_string());
         }
 
-        let player = match self.get_player(player_id) {
-            Some(p) => p,
-            None => return Err("Invalid player".to_string()),
+        let player_idx = match self.get_player_index(player_id) {
+            Some(idx) => idx,
+            None => return Err("Invalid player ID".to_string()),
         };
+        let team = self.state.players[player_idx].team;
 
-        if self.state.turn != player.team {
+        if self.state.turn != self.state.players[player_idx].team {
             return Err("Not your turn".to_string());
         }
 
@@ -167,31 +176,24 @@ impl Game {
             return Err("Invalid move".to_string());
         }
 
-        self.state.board[space] = player.team;
+        self.state.board[space] = team;
         self.state.turn = if self.state.turn == 'X' { 'O' } else { 'X' };
 
         self.add_chat_message(
-            ChatMessageSource::Player(player.id),
-            format!(
-                "Played {} at ({}, {}).",
-                player,
-                space % 3 + 1,
-                space / 3 + 1
-            ),
+            ChatMessageSource::Player(player_id),
+            format!("Played {} at ({}, {}).", team, space % 3 + 1, space / 3 + 1),
         )
         .unwrap();
 
         if let Some(winning_team) = self.check_for_win() {
             self.state.winner = Some(EndState::Win(winning_team));
-            let mut winner = self
-                .state
-                .players
-                .iter_mut()
-                .find(|p| p.team == winning_team)
-                .unwrap();
-            winner.wins += 1;
-            self.add_chat_message(ChatMessageSource::System, format!("{} wins!", winner))
-                .unwrap();
+            let winner_idx = self.get_player_index_by_team(winning_team).unwrap();
+            self.state.players[winner_idx].wins += 1;
+            self.add_chat_message(
+                ChatMessageSource::System,
+                format!("{} wins!", self.state.players[winner_idx]),
+            )
+            .unwrap();
         } else if self.check_for_draw() {
             self.state.winner = Some(EndState::Draw);
             self.add_chat_message(ChatMessageSource::System, "It's a draw!".to_string())
@@ -272,7 +274,7 @@ impl Game {
 #[derive(Debug, Clone, Deserialize)]
 pub enum FromBrowser {
     ChatMsg { text: String },
-    Move { space: PlayerID },
+    Move { space: usize },
     Rematch,
 }
 

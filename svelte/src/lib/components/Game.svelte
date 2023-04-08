@@ -108,6 +108,13 @@
                 gameState = state as GameState;
                 myTeam = team as Team;
                 enoughPlayers = gameState.players.length === 2;
+                window.history.replaceState(
+                    {},
+                    document.title,
+                    `?token=${encodeURIComponent(
+                        joinToken
+                    )}&name=${encodeURIComponent(playerName)}`
+                );
             } else if (type === "GameState") {
                 gameState = data as GameState;
                 enoughPlayers = gameState.players.length === 2;
@@ -122,6 +129,11 @@
         ws.onclose = () => {
             inGame = false;
             joinToken = "";
+            window.history.replaceState(
+                {},
+                document.title,
+                `?name=${encodeURIComponent(playerName)}`
+            );
             console.log("disconnected by server");
         };
 

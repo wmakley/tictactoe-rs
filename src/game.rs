@@ -89,10 +89,9 @@ impl Game {
         let last_player = self.state.players.last();
 
         let id = last_player.map(|p| p.id + 1).unwrap_or(0);
-        let team = if last_player.map(|p| p.team).unwrap_or('X') == 'X' {
-            'O'
-        } else {
-            'X'
+        let team = match last_player.map(|p| p.team) {
+            Some('X') => 'O',
+            _ => 'X',
         };
 
         let player = Player {

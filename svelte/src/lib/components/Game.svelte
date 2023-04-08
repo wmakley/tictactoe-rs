@@ -11,9 +11,13 @@
         const socketProtocol = url.protocol === "https:" ? "wss://" : "ws://";
         socketUrl = `${socketProtocol}${url.host}/ws`;
 
+        // Hack to get around the fact that the server is running on a different
+        // port in development.
+        socketUrl = socketUrl.replace("5173", "3000");
+
+        playerName = url.searchParams.get("name") || "";
         joinToken = url.searchParams.get("token") || "";
         if (joinToken) {
-            playerName = url.searchParams.get("name") || "";
             joinGame();
         }
     });

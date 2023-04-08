@@ -192,7 +192,7 @@
             console.warn("game is not over");
             return;
         }
-        ws.send(JSON.stringify({ Rematch: {} }));
+        ws.send(JSON.stringify("Rematch"));
     }
 </script>
 

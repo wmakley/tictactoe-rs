@@ -198,13 +198,13 @@
                 <label for="join-token"
                     >{inGame
                         ? "Code For Others to Join You"
-                        : "Game Token"}</label
+                        : "Game Name"}</label
                 >
                 <input
                     type="text"
                     id="join-token"
                     name="token"
-                    placeholder="Join Token (Leave blank for new game)"
+                    placeholder="Game Name (leave blank for random)"
                     readonly={inGame}
                     on:click={(e) => {
                         if (inGame) {
@@ -227,11 +227,9 @@
                 </div>
             {:else}
                 <div class="column">
-                    <input
-                        type="submit"
-                        value="Join Game"
-                        class="horizontal-submit"
-                    />
+                    <button type="submit" class="horizontal-submit">
+                        Join or Start Game
+                    </button>
                 </div>
             {/if}
         </div>

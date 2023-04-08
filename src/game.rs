@@ -182,9 +182,7 @@ impl Game {
                 format!("{} wins!", self.get_player(winner).unwrap()),
             )
             .unwrap();
-        }
-
-        if self.check_for_draw() {
+        } else if self.check_for_draw() {
             self.state.winner = Some(EndState::Draw);
             self.add_chat_message(ChatMessageSource::System, "It's a draw!".to_string())
                 .unwrap();

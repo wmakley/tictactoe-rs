@@ -121,6 +121,7 @@
             inGame = false;
             console.log("disconnected by server");
             ws = null;
+            (document.getElementById("join-token") as HTMLInputElement)?.select();
         };
 
         ws.onerror = (err) => {

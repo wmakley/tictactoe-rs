@@ -15,7 +15,7 @@ body {
 .chat-messages {
     border: 1px dashed gray;
     border-radius: 0.5em;
-    max-height: 500px;
+    max-height: 300px;
     overflow-y: scroll;
     padding: 1.0em 1.0em 0 1.0em;
     margin-bottom: 1.0em;

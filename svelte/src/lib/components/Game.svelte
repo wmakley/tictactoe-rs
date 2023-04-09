@@ -194,6 +194,7 @@
                     id="player-name"
                     name="name"
                     placeholder="Player Name"
+                    maxlength="32"
                     bind:value={playerName}
                     on:change={changeName}
                 />
@@ -209,6 +210,7 @@
                     id="join-token"
                     name="token"
                     placeholder="Game Name (leave blank for random)"
+                    maxlength="32"
                     readonly={inGame}
                     on:click={(e) => {
                         if (inGame) {

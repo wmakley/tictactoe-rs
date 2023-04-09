@@ -17,3 +17,10 @@ js:
 .PHONY: docker-image
 docker-image:
 	docker build -t tictactoe-rs:latest .
+
+.PHONY: pnpm-ci
+pnpm-ci:
+	cd svelte && pnpm ci
+
+.PHONY: ci
+ci: pnpm-ci js

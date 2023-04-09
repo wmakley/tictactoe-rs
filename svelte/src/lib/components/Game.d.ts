@@ -20,11 +20,13 @@ type Square = " " | "X" | "O";
 
 interface ChatMessage {
     id: number;
-    source: ChatMessageSource | "System";
+    source: ChatMessageSource | System;
     text: string;
 }
 
-type ChatMessageSource = PlayerSource | "System";
+type System = "System";
+
+type ChatMessageSource = PlayerSource | System;
 interface PlayerSource {
     Player: number;
 }

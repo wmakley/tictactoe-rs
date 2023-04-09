@@ -57,6 +57,23 @@
         return gameState.players.find((p) => p.id === id);
     }
 
+    /**
+     * Map over the raw chat messages, replacing the player ID with the player.
+     */
+    function getChatMessagesWithPlayers(
+        gameState: GameState
+    ): [number, Player | string, string][] {
+        return gameState.chat.map(({ id, source, text }) => {
+            return [
+                id,
+                source === "System"
+                    ? "System"
+                    : getPlayer(gameState, source.Player) || "Unknown",
+                text,
+            ];
+        });
+    }
+
     let ws: WebSocket | null = null;
 
     function joinGame(): void {
@@ -121,7 +138,9 @@
             inGame = false;
             console.log("disconnected by server");
             ws = null;
-            (document.getElementById("join-token") as HTMLInputElement)?.select();
+            (
+                document.getElementById("join-token") as HTMLInputElement
+            )?.select();
         };
 
         ws.onerror = (err) => {
@@ -297,15 +316,17 @@
             <div id="chat">
                 <h2>Chat</h2>
                 <div class="chat-messages">
-                    {#each gameState.chat as { id, source, text }}
+                    {#each getChatMessagesWithPlayers(gameState) as [id, source, text]}
                         <div class="chat-message" id={`chat-message-${id}`}>
-                            {#if source === "System"}
+                            {#if typeof source === "string"}
                                 <span class="chat-message-server">
-                                    Server:
+                                    {source === "System"
+                                        ? "Server:"
+                                        : source + ":"}
                                 </span>
                             {:else}
                                 <span class="chat-message-player">
-                                    {getPlayer(gameState, source.Player)?.name} ({source.Player}):
+                                    {source.name} ({source.wins}):
                                 </span>
                             {/if}
                             <span class="chat-message-text">{text}</span>

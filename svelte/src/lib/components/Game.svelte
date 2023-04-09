@@ -18,7 +18,7 @@
         socketUrl = socketUrl.replace("5173", "3000");
 
         // Actually we don't want to do this, so user can copy paste their URL
-        // playerName = url.searchParams.get("name") || "";
+        playerName = localStorage.getItem("playerName") || "";
         joinToken = url.searchParams.get("token") || "";
         if (joinToken) {
             joinGame();
@@ -94,9 +94,7 @@
                 window.history.replaceState(
                     {},
                     document.title,
-                    `?token=${encodeURIComponent(
-                        joinToken
-                    )}&name=${encodeURIComponent(playerName)}`
+                    `?token=${encodeURIComponent(joinToken)}`
                 );
             } else if (type === "GameState") {
                 gameState = data as GameState;
@@ -113,11 +111,6 @@
         ws.onclose = () => {
             inGame = false;
             joinToken = "";
-            window.history.replaceState(
-                {},
-                document.title,
-                `?name=${encodeURIComponent(playerName)}`
-            );
             console.log("disconnected by server");
         };
 
@@ -154,6 +147,8 @@
         if (!ws || !inGame || !playerName) {
             return;
         }
+
+        localStorage.setItem("playerName", playerName);
 
         ws.send(JSON.stringify({ ChangeName: { new_name: playerName } }));
     }

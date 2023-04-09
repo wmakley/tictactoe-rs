@@ -1,5 +1,4 @@
 <script lang="ts">
-    // TODO: ability to change name on the fly
     // TODO: don't clear token on disconnect
     import { onMount } from "svelte";
 
@@ -120,8 +119,8 @@
 
         ws.onclose = () => {
             inGame = false;
-            joinToken = "";
             console.log("disconnected by server");
+            ws = null;
         };
 
         ws.onerror = (err) => {

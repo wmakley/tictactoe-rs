@@ -17,43 +17,13 @@
         // port in development.
         socketUrl = socketUrl.replace("5173", "3000");
 
-        playerName = url.searchParams.get("name") || "";
+        // Actually we don't want to do this, so user can copy paste their URL
+        // playerName = url.searchParams.get("name") || "";
         joinToken = url.searchParams.get("token") || "";
         if (joinToken) {
             joinGame();
         }
     });
-
-    interface GameState {
-        turn: Team;
-        winner: "Draw" | { Win: Team } | null;
-        players: Player[];
-        board: Square[];
-        chat: ChatMessage[];
-    }
-
-    interface Player {
-        id: PlayerID;
-        team: Team;
-        name: string;
-        wins: number;
-    }
-
-    type PlayerID = number;
-
-    type Team = "X" | "O";
-    type Square = " " | "X" | "O";
-
-    interface ChatMessage {
-        id: number;
-        source: ChatMessageSource | "System";
-        text: string;
-    }
-
-    type ChatMessageSource = PlayerSource | "System";
-    interface PlayerSource {
-        Player: number;
-    }
 
     let playerName = "";
     let inGame = false;

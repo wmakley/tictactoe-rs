@@ -108,13 +108,10 @@ impl Game {
         Ok(player)
     }
 
-    pub fn update_player_name(&mut self, id: PlayerID, name: &String) -> Result<(), String> {
-        let name = name.trim();
-        if name.is_empty() {
-            return Err("Empty name".to_string());
-        }
+    /// internal trusted function that always succeeds unless the id is bad
+    fn update_player_name(&mut self, id: PlayerID, name: String) -> Result<(), String> {
         let player = self.get_player_mut(id).ok_or("Invalid player ID")?;
-        player.name = name.to_string();
+        player.name = name;
         Ok(())
     }
 
@@ -240,6 +237,21 @@ impl Game {
         self.state.board.iter().all(|&c| c != ' ')
     }
 
+    fn reset(&mut self) {
+        self.state.board.iter_mut().for_each(|c| *c = ' ');
+        self.state.turn = 'X';
+        self.state.winner = None;
+    }
+    fn swap_teams(&mut self) {
+        self.state.players.iter_mut().for_each(|p| {
+            if p.team == 'X' {
+                p.team = 'O';
+            } else {
+                p.team = 'X';
+            }
+        });
+    }
+
     pub fn handle_msg(&mut self, player_id: PlayerID, msg: FromBrowser) -> Result<bool, String> {
         debug!("Game: Handle Msg: {:?}", msg);
         match msg {
@@ -254,7 +266,14 @@ impl Game {
                 self.add_chat_message(ChatMessageSource::Player(player_id), trimmed.to_string());
             }
             FromBrowser::ChangeName { new_name } => {
-                self.update_player_name(player_id, &new_name)?;
+                let mut trimmed = new_name.trim();
+                if trimmed.len() == 0 {
+                    trimmed = "Unnamed Player";
+                } else if trimmed.len() > 32 {
+                    trimmed = &trimmed[..32];
+                }
+                self.update_player_name(player_id, trimmed.to_string())
+                    .unwrap();
                 self.add_chat_message(
                     ChatMessageSource::Player(player_id),
                     format!("Now my name is \"{}\"!", new_name),
@@ -267,17 +286,8 @@ impl Game {
                     ChatMessageSource::System,
                     "Players have swapped sides.".to_string(),
                 );
-                self.state.board.iter_mut().for_each(|c| *c = ' ');
-                self.state.turn = 'X';
-                self.state.winner = None;
-                // Swap teams
-                self.state.players.iter_mut().for_each(|p| {
-                    if p.team == 'X' {
-                        p.team = 'O';
-                    } else {
-                        p.team = 'X';
-                    }
-                });
+                self.reset();
+                self.swap_teams();
             }
         }
         Ok(true)

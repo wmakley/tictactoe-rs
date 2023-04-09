@@ -8,7 +8,7 @@ use axum::{
         Query, State,
     },
     http::StatusCode,
-    response::Response,
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -93,6 +93,15 @@ impl NewGameParams {
                 .filter(|s| !s.is_empty()),
         }
     }
+
+    pub fn is_valid(&self) -> bool {
+        if let Some(token) = &self.token {
+            if token.len() > 32 {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 async fn open_conn(
@@ -101,6 +110,10 @@ async fn open_conn(
     ws: WebSocketUpgrade,
 ) -> Response {
     let params = params.normalized();
+    if !params.is_valid() {
+        return (StatusCode::BAD_REQUEST, "Invalid parameters").into_response();
+    }
+
     ws.on_upgrade(|socket| handle_socket(socket, params, state))
 }
 

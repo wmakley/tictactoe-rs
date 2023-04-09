@@ -20,7 +20,7 @@ docker-image:
 
 .PHONY: pnpm-ci
 pnpm-ci:
-	cd svelte && pnpm ci
+	cd svelte && pnpm install --frozen-lockfile
 
 .PHONY: ci
 ci: pnpm-ci js

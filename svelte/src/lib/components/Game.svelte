@@ -17,10 +17,20 @@
         // port in development.
         socketUrl = socketUrl.replace("5173", "3000");
 
-        // Actually we don't want to do this, so user can copy paste their URL
         playerName = localStorage.getItem("playerName") || "";
+        console.debug("playerName", playerName);
+        if (playerName.length > 32) {
+            console.error("playerName too long");
+            playerName = playerName.slice(0, 32);
+        }
+
         joinToken = url.searchParams.get("token") || "";
         if (joinToken) {
+            if (joinToken.length > 32) {
+                console.error("joinToken too long");
+                joinToken = "";
+                return;
+            }
             joinGame();
         }
     });
@@ -44,13 +54,13 @@
         board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
         chat: [],
     };
-    function getPlayer(gameState: GameState, id: PlayerID) {
+    function getPlayer(gameState: GameState, id: PlayerID): Player | undefined {
         return gameState.players.find((p) => p.id === id);
     }
 
     let ws: WebSocket | null = null;
 
-    function joinGame() {
+    function joinGame(): void {
         if (inGame) {
             return;
         }
@@ -119,7 +129,7 @@
         };
     }
 
-    function leaveGame() {
+    function leaveGame(): void {
         console.log("Leaving game");
         if (ws) {
             ws.close();
@@ -132,7 +142,7 @@
         return trimmed.length > 0 && trimmed.length <= 500;
     }
 
-    function sendChatMessage() {
+    function sendChatMessage(): void {
         if (!ws) {
             return;
         }
@@ -143,17 +153,20 @@
         chatMessage = "";
     }
 
-    function changeName() {
-        if (!ws || !inGame || !playerName) {
+    function changeName(): void {
+        localStorage.setItem("playerName", playerName);
+
+        if (!playerName) {
             return;
         }
-
-        localStorage.setItem("playerName", playerName);
+        if (!ws || !inGame) {
+            return;
+        }
 
         ws.send(JSON.stringify({ ChangeName: { new_name: playerName } }));
     }
 
-    function sendMove(space: number) {
+    function sendMove(space: number): void {
         if (!ws) {
             return;
         }
@@ -172,7 +185,7 @@
         ws.send(JSON.stringify({ Move: { space } }));
     }
 
-    function rematch() {
+    function rematch(): void {
         if (!ws) {
             return;
         }

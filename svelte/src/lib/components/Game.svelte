@@ -135,7 +135,8 @@
 
     let chatMessage = "";
     function isChatMessageValid(chatMessage: string): boolean {
-        return (chatMessage || "").replace(/^\s+|\s+$/gm, "").length > 0;
+        const trimmed = (chatMessage || "").replace(/^\s+|\s+$/gm, "");
+        return trimmed.length > 0 && trimmed.length <= 500;
     }
 
     function sendChatMessage() {

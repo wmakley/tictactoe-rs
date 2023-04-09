@@ -104,8 +104,7 @@ impl Game {
         self.add_chat_message(
             ChatMessageSource::System,
             format!("{} ({}) has joined the game", player.name, player.team),
-        )
-        .unwrap();
+        );
         Ok(player)
     }
 
@@ -119,22 +118,14 @@ impl Game {
         Ok(())
     }
 
-    pub fn add_chat_message(
-        &mut self,
-        source: ChatMessageSource,
-        text: String,
-    ) -> Result<(), String> {
-        if text.trim().is_empty() {
-            return Err("Empty message".to_string());
-        }
-
+    /// Internal trusted version
+    fn add_chat_message(&mut self, source: ChatMessageSource, text: String) {
         let id = self.state.chat.len();
         self.state.chat.push(ChatMessage {
             id: id,
             source: source,
             text: text,
         });
-        Ok(())
     }
 
     pub fn get_player_index(&self, id: PlayerID) -> Option<usize> {
@@ -157,8 +148,7 @@ impl Game {
         self.add_chat_message(
             ChatMessageSource::System,
             format!("{} has left the game", player.name),
-        )
-        .unwrap();
+        );
         self.state.players.retain(|p| p.id != id);
     }
 
@@ -191,8 +181,7 @@ impl Game {
         self.add_chat_message(
             ChatMessageSource::Player(player_id),
             format!("Played {} at ({}, {}).", team, space % 3 + 1, space / 3 + 1),
-        )
-        .unwrap();
+        );
 
         if let Some(winning_team) = self.check_for_win() {
             self.state.winner = Some(EndState::Win(winning_team));
@@ -201,12 +190,10 @@ impl Game {
             self.add_chat_message(
                 ChatMessageSource::System,
                 format!("{} wins!", self.state.players[winner_idx]),
-            )
-            .unwrap();
+            );
         } else if self.check_for_draw() {
             self.state.winner = Some(EndState::Draw);
-            self.add_chat_message(ChatMessageSource::System, "It's a draw!".to_string())
-                .unwrap();
+            self.add_chat_message(ChatMessageSource::System, "It's a draw!".to_string());
         }
 
         Ok(())
@@ -257,25 +244,29 @@ impl Game {
         debug!("Game: Handle Msg: {:?}", msg);
         match msg {
             FromBrowser::ChatMsg { text } => {
-                self.add_chat_message(ChatMessageSource::Player(player_id), text)?;
+                let trimmed = text.trim();
+                if trimmed.len() == 0 {
+                    return Err("Empty message".to_string());
+                }
+                if trimmed.len() > 500 {
+                    return Err("Message too long".to_string());
+                }
+                self.add_chat_message(ChatMessageSource::Player(player_id), trimmed.to_string());
             }
             FromBrowser::ChangeName { new_name } => {
                 self.update_player_name(player_id, &new_name)?;
                 self.add_chat_message(
                     ChatMessageSource::Player(player_id),
                     format!("Now my name is \"{}\"!", new_name),
-                )
-                .unwrap();
+                );
             }
             FromBrowser::Move { space } => self.take_turn(player_id, space)?,
             FromBrowser::Rematch => {
-                self.add_chat_message(ChatMessageSource::Player(player_id), "Rematch!".to_string())
-                    .unwrap();
+                self.add_chat_message(ChatMessageSource::Player(player_id), "Rematch!".to_string());
                 self.add_chat_message(
                     ChatMessageSource::System,
                     "Players have swapped sides.".to_string(),
-                )
-                .unwrap();
+                );
                 self.state.board.iter_mut().for_each(|c| *c = ' ');
                 self.state.turn = 'X';
                 self.state.winner = None;

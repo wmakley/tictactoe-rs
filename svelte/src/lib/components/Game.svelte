@@ -1,4 +1,6 @@
 <script lang="ts">
+    // TODO: ability to change name on the fly
+    // TODO: don't clear token on disconnect
     import { onMount } from "svelte";
 
     // https://natclark.com/tutorials/svelte-get-current-url/
@@ -177,6 +179,14 @@
         chatMessage = "";
     }
 
+    function changeName() {
+        if (!ws || !inGame || !playerName) {
+            return;
+        }
+
+        ws.send(JSON.stringify({ ChangeName: { new_name: playerName } }));
+    }
+
     function sendMove(space: number) {
         if (!ws) {
             return;
@@ -218,8 +228,8 @@
                     id="player-name"
                     name="name"
                     placeholder="Player Name"
-                    readonly={inGame}
                     bind:value={playerName}
+                    on:change={changeName}
                 />
             </div>
             <div class="column">

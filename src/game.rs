@@ -109,7 +109,21 @@ impl Game {
         Ok(player)
     }
 
-    fn add_chat_message(&mut self, source: ChatMessageSource, text: String) -> Result<(), String> {
+    pub fn update_player_name(&mut self, id: PlayerID, name: &String) -> Result<(), String> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err("Empty name".to_string());
+        }
+        let player = self.get_player_mut(id).ok_or("Invalid player ID")?;
+        player.name = name.to_string();
+        Ok(())
+    }
+
+    pub fn add_chat_message(
+        &mut self,
+        source: ChatMessageSource,
+        text: String,
+    ) -> Result<(), String> {
         if text.trim().is_empty() {
             return Err("Empty message".to_string());
         }
@@ -129,6 +143,10 @@ impl Game {
 
     pub fn get_player_index_by_team(&self, team: char) -> Option<usize> {
         self.state.players.iter().position(|p| p.team == team)
+    }
+
+    pub fn get_player_mut(&mut self, id: PlayerID) -> Option<&mut Player> {
+        self.state.players.iter_mut().find(|p| p.id == id)
     }
 
     pub fn remove_player(&mut self, id: PlayerID) {
@@ -241,6 +259,14 @@ impl Game {
             FromBrowser::ChatMsg { text } => {
                 self.add_chat_message(ChatMessageSource::Player(player_id), text)?;
             }
+            FromBrowser::ChangeName { new_name } => {
+                self.update_player_name(player_id, &new_name)?;
+                self.add_chat_message(
+                    ChatMessageSource::Player(player_id),
+                    format!("Now my name is \"{}\"!", new_name),
+                )
+                .unwrap();
+            }
             FromBrowser::Move { space } => self.take_turn(player_id, space)?,
             FromBrowser::Rematch => {
                 self.add_chat_message(ChatMessageSource::Player(player_id), "Rematch!".to_string())
@@ -270,6 +296,7 @@ impl Game {
 #[derive(Debug, Clone, Deserialize)]
 pub enum FromBrowser {
     ChatMsg { text: String },
+    ChangeName { new_name: String },
     Move { space: usize },
     Rematch,
 }

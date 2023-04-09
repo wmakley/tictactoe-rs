@@ -9,12 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8.1.0
       - uses: actions/setup-node@v3
         with:
           node-version-file: 'svelte/.tool-versions'
           cache: 'pnpm'
           cache-dependency-path: 'svelte/pnpm-lock.yaml'
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: ls -la
       - run: make ci
       - run: flyctl deploy --remote-only

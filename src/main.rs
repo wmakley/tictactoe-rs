@@ -18,9 +18,10 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::{Arc, Mutex};
+use tokio::sync::watch::Receiver;
 use tokio::time::{sleep, Duration};
 use tower_http::trace::TraceLayer;
-use tracing::{debug, error};
+use tracing::debug;
 use tracing_subscriber;
 
 #[derive(Debug)]
@@ -117,6 +118,13 @@ async fn open_conn(
     ws.on_upgrade(|socket| handle_socket(socket, params, state))
 }
 
+struct JoinGameResult {
+    id: String,
+    player: game::Player,
+    game_state: game::State,
+    receive_from_game: Receiver<game::State>,
+}
+
 async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<AppState>) {
     // let redis = state.redis_conn_mgr.clone();
     debug!("New WebSocket connection with params: '{:?}'", params);
@@ -145,33 +153,41 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
 
     // now that we got a game, add the connected user as a player,
     // extract some data from it and send state to client
-    let (id, player, game_state, mut receive_from_game) = {
+    let join_game_result: Result<JoinGameResult, String> = {
         let mut game = game.lock().unwrap();
 
-        let player: game::Player;
         match game.add_player(params.name.unwrap_or_else(|| "Unnamed Player".to_string())) {
             Ok(_player) => {
-                player = _player;
-            }
-            Err(e) => {
-                error!("Socket: TODO: Error adding player: {:?}", e);
-                return;
-            }
-        }
-        game.broadcast_state();
+                game.broadcast_state();
 
-        (
-            game.id.clone(),
-            player,
-            game.state.clone(),
-            game.state_changes.subscribe(),
-        )
+                Ok(JoinGameResult {
+                    id: game.id.clone(),
+                    player: _player,
+                    game_state: game.state.clone(),
+                    receive_from_game: game.state_changes.subscribe(),
+                })
+            }
+            Err(e) => Err(e),
+        }
     };
 
+    let join_game_result = match join_game_result {
+        Ok(j) => j,
+        Err(e) => {
+            let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
+            socket.send(Message::Text(json)).await.unwrap();
+            socket.close().await.unwrap();
+            return;
+        }
+    };
+
+    let player = join_game_result.player;
+    let mut receive_from_game = join_game_result.receive_from_game;
+
     let json = serde_json::to_string(&game::ToBrowser::JoinedGame {
-        token: id,
+        token: join_game_result.id,
         player_id: player.id,
-        state: game_state,
+        state: join_game_result.game_state,
     })
     .unwrap();
     socket.send(Message::Text(json)).await.unwrap();

@@ -63,7 +63,7 @@ async fn main() {
         .layer(TraceLayer::new_for_http());
 
     let addr = "0.0.0.0:3000";
-    println!("Starting server on {}", addr);
+    println!("Listening on {}, set RUST_LOG=\"info,tictactoe_rs=trace,tower_http=trace\" to see detailed logs.", addr);
 
     axum::Server::bind(&addr.parse().unwrap())
         .serve(app.into_make_service())

@@ -129,6 +129,7 @@
             } else if (type === "Error") {
                 console.error("Error from server", data);
                 window.alert(data);
+                ws?.close();
             } else {
                 console.error("Unknown message type", type);
             }

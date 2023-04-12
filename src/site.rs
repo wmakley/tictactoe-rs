@@ -4,11 +4,24 @@ use axum::{
 };
 use tower::util::ServiceExt;
 use tower_http::services::ServeDir;
-use tracing::{debug};
+use tracing::debug;
 
 pub async fn index(_: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
     // println!("root uri: {:?}", uri);
-    get_static_file("/index.html".parse().unwrap()).await
+    let mut r = get_static_file("/index.html".parse().unwrap()).await?;
+
+    r.headers_mut().insert(
+        "cache-control",
+        "no-cache; no-store; must-revalidate".parse().unwrap(),
+    );
+    Ok(r)
+    // Set no cache headers
+    // Ok(Response::builder()
+    //     .status(r.status())
+    //     .header("content-type", "text/html")
+    //     .header("cache-control", "no-cache; no-store; must-revalidate")
+    //     .body(boxed(r.into_body()))
+    //     .unwrap())
 }
 
 pub async fn static_file_server(uri: Uri) -> Result<Response<BoxBody>, (StatusCode, String)> {
@@ -27,7 +40,17 @@ pub async fn static_file_server(uri: Uri) -> Result<Response<BoxBody>, (StatusCo
         //     Ok(uri_html) => get_static_file(uri_html).await,
         //     Err(_) => Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid URI".to_string())),
         // }
+    } else if uri.path().ends_with(".html") {
+        // println!("File Server 301: {:?}", uri);
+        // prevent caching of html files
+        let mut res = res;
+        res.headers_mut().insert(
+            "cache-control",
+            "no-cache; no-store; must-revalidate".parse().unwrap(),
+        );
+        Ok(res)
     } else {
+        // println!("File Server 200: {:?}", uri);
         Ok(res)
     }
 }

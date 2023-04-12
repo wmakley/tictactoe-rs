@@ -149,6 +149,8 @@
             (
                 document.getElementById("join-token") as HTMLInputElement
             )?.select();
+            // get rid of token in url to prevent accidental linking or inability to refresh
+            window.history.replaceState({}, document.title, "/");
         };
 
         ws.onerror = (err) => {

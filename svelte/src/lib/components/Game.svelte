@@ -1,6 +1,6 @@
 <script lang="ts">
     // TODO: don't clear token on disconnect
-    import { onMount } from "svelte";
+    import { onMount, afterUpdate } from "svelte";
 
     // https://natclark.com/tutorials/svelte-get-current-url/
     let url: URL | null = null;
@@ -31,6 +31,13 @@
                 return;
             }
             joinGame();
+        }
+    });
+
+    afterUpdate(() => {
+        const chat = document.getElementById("chat-messages");
+        if (chat) {
+            chat.scrollTop = chat.scrollHeight;
         }
     });
 
@@ -316,7 +323,7 @@
         <div class="column">
             <div id="chat">
                 <h2>Chat</h2>
-                <div class="chat-messages">
+                <div id="chat-messages" class="chat-messages">
                     {#each getChatMessagesWithPlayers(gameState) as [id, source, text]}
                         <div class="chat-message" id={`chat-message-${id}`}>
                             {#if typeof source === "string"}

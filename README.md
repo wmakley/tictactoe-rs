@@ -1,6 +1,6 @@
 # tictactoe-rs
 
-Tic-Tac-Toe Rust and Svelte websockets experiment.
+Tic-Tac-Toe Rust and Svelte websockets experiment. Superseded by https://github.com/wmakley/tictactoe
 
 ## Backend Setup
 
